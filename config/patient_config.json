@@ -1,0 +1,63 @@
+{
+  "id_generation": {
+    "pattern": "{6letters}",
+    "start_value": 100,
+    "increment": 1,
+    "prefix": "",
+    "suffix": "",
+    "description": "Examples: PID{6digits} -> PID100000, {6letters} -> ABCDEF, TEST{4digits} -> TEST0001"
+  },
+  "name_generation": {
+    "use_realistic": false,
+    "custom_names": [
+      {"first": "TEST", "last": "PATIENT"},
+      {"first": "DEMO", "last": "USER"},
+      {"first": "SAMPLE", "last": "PERSON"}, 
+      {"first": "FAKE", "last": "NAME"},
+      {"first": "SYNTHETIC", "last": "DATA"},
+      {"first": "CLINICAL", "last": "TESTCASE"},
+      {"first": "RADIOLOGY", "last": "PHANTOM"}
+    ]
+  },
+  "demographics": {
+    "birth_year_range": [1940, 2005],
+    "sex_distribution": {"M": 0.45, "F": 0.45, "O": 0.1},
+    "addresses": [
+      "123 Test Street, Demo City, TC 12345",
+      "456 Sample Road, Example Town, ET 67890",
+      "789 Fake Avenue, Synthetic City, SC 11111", 
+      "321 Mock Boulevard, Test Village, TV 55555"
+    ],
+    "phone_pattern": "555-{3digits}-{4digits}"
+  },
+  "example_patterns": [
+    {
+      "name": "Six uppercase letters",
+      "pattern": "{6letters}",
+      "example": "ABCDEF"
+    },
+    {
+      "name": "Seven digits starting from 100",
+      "pattern": "{7digits}",
+      "start_value": 100,
+      "example": "0000100"
+    },
+    {
+      "name": "Hospital prefix with incrementing number",
+      "pattern": "HSP{5digits}",
+      "start_value": 1,
+      "example": "HSP00001"
+    },
+    {
+      "name": "Year plus random letters and digits",
+      "pattern": "2025{2letters}{7digits}",
+      "start_value": 1,
+      "example": "2025AB0000001"
+    },
+    {
+      "name": "Hex ID",
+      "pattern": "HEX{8hex}",
+      "example": "HEXAB12CD34"
+    }
+  ]
+}

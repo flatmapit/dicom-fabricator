@@ -1,0 +1,643 @@
+/* I-MED inspired professional medical styling */
+
+:root {
+    --primary-blue: #2c5aa0;
+    --secondary-blue: #1a3d73;
+    --accent-blue: #4a90e2;
+    --light-blue: #f0f4ff;
+    --text-dark: #2c3e50;
+    --text-muted: #7f8c8d;
+    --background-white: #ffffff;
+    --background-light: #f8f9fa;
+    --border-light: #e1e8ed;
+    --success-green: #27ae60;
+    --warning-orange: #f39c12;
+    --danger-red: #e74c3c;
+}
+
+/* Global Typography */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text-dark);
+    line-height: 1.6;
+    background-color: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.footer {
+    margin-top: auto;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-dark);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Navigation Styling - Clean medical approach */
+.navbar {
+    background-color: var(--background-white) !important;
+    box-shadow: 0 2px 8px rgba(44, 90, 160, 0.1);
+    padding: 1rem 0;
+    border-bottom: 3px solid var(--primary-blue);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--primary-blue) !important;
+}
+
+.navbar-brand i {
+    color: var(--accent-blue);
+    margin-right: 0.5rem;
+}
+
+.navbar-nav .nav-link {
+    color: var(--text-dark) !important;
+    font-weight: 500;
+    padding: 0.75rem 1rem !important;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.navbar-nav .nav-link:hover {
+    color: var(--primary-blue) !important;
+    background-color: var(--light-blue);
+    border-radius: 0.375rem;
+}
+
+.navbar-nav .nav-link.active {
+    color: var(--primary-blue) !important;
+    background-color: var(--light-blue);
+    border-radius: 0.375rem;
+    font-weight: 600;
+}
+
+.navbar-nav .nav-link i {
+    color: inherit;
+    margin-right: 0.5rem;
+}
+
+/* Card styling - Clean medical approach */
+.card {
+    border: 1px solid var(--border-light);
+    box-shadow: 0 1px 3px rgba(44, 90, 160, 0.08);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: box-shadow 0.3s ease;
+    background-color: var(--background-white);
+}
+
+.card:hover {
+    box-shadow: 0 2px 8px rgba(44, 90, 160, 0.12);
+}
+
+.card-header {
+    background-color: var(--background-white);
+    border-bottom: 2px solid var(--light-blue);
+    padding: 1.25rem 1.5rem;
+}
+
+.card-header h5 {
+    color: var(--text-dark);
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.card-header i {
+    color: var(--primary-blue);
+    margin-right: 0.75rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+    background-color: var(--background-white);
+}
+
+/* Button Styling - Professional medical approach */
+.btn {
+    border-radius: 0.375rem;
+    font-weight: 500;
+    padding: 0.625rem 1.25rem;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.btn-primary {
+    background-color: var(--primary-blue);
+    border: 1px solid var(--primary-blue);
+    color: white;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--secondary-blue);
+    border-color: var(--secondary-blue);
+    color: white;
+    box-shadow: 0 2px 4px rgba(44, 90, 160, 0.25);
+}
+
+.btn-success {
+    background-color: var(--success-green);
+    border: 1px solid var(--success-green);
+    color: white;
+}
+
+.btn-success:hover, .btn-success:focus {
+    background-color: #229954;
+    border-color: #229954;
+    color: white;
+    box-shadow: 0 2px 4px rgba(39, 174, 96, 0.25);
+}
+
+.btn-info {
+    background-color: var(--accent-blue);
+    border: 1px solid var(--accent-blue);
+    color: white;
+}
+
+.btn-info:hover, .btn-info:focus {
+    background-color: #357abd;
+    border-color: #357abd;
+    color: white;
+    box-shadow: 0 2px 4px rgba(74, 144, 226, 0.25);
+}
+
+.btn-warning {
+    background-color: var(--warning-orange);
+    border: 1px solid var(--warning-orange);
+    color: white;
+}
+
+.btn-warning:hover, .btn-warning:focus {
+    background-color: #d68910;
+    border-color: #d68910;
+    color: white;
+}
+
+.btn-danger {
+    background-color: var(--danger-red);
+    border: 1px solid var(--danger-red);
+    color: white;
+}
+
+.btn-danger:hover, .btn-danger:focus {
+    background-color: #c0392b;
+    border-color: #c0392b;
+    color: white;
+}
+
+.btn-outline-success {
+    border: 1px solid var(--success-green);
+    color: var(--success-green);
+    background-color: transparent;
+}
+
+.btn-outline-success:hover, .btn-outline-success:focus {
+    background-color: var(--success-green);
+    border-color: var(--success-green);
+    color: white;
+}
+
+/* Form Styling */
+.form-control, .form-select {
+    border-radius: 0.5rem;
+    border: 2px solid var(--border-light);
+    padding: 0.75rem 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+}
+
+.form-label {
+    color: var(--text-dark);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* Table Styling - Professional medical approach */
+.table {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(44, 90, 160, 0.08);
+    border: 1px solid var(--border-light);
+    width: 100%;
+}
+
+/* Better table layout for wide screens */
+@media (min-width: 1400px) {
+    .table {
+        font-size: 0.95rem;
+    }
+    
+    .table th, .table td {
+        padding: 1rem;
+    }
+}
+
+/* Extra wide screens get more padding */
+@media (min-width: 1920px) {
+    .table {
+        font-size: 1rem;
+    }
+    
+    .table th, .table td {
+        padding: 1.125rem;
+    }
+}
+
+.table thead th {
+    background-color: var(--light-blue);
+    color: var(--text-dark);
+    font-weight: 600;
+    border: none;
+    padding: 0.875rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr:hover {
+    background-color: #fafbfc;
+    cursor: pointer;
+}
+
+.table td {
+    padding: 0.875rem;
+    vertical-align: middle;
+    border-color: var(--border-light);
+    color: var(--text-dark);
+}
+
+.table tbody tr {
+    border-bottom: 1px solid var(--border-light);
+}
+
+/* Alert positioning */
+.alert.position-fixed {
+    z-index: 9999;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translate(-50%, -100%);
+        opacity: 0;
+    }
+    to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+}
+
+/* Loading spinner container */
+.spinner-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+/* DICOM viewer image */
+.dicom-image {
+    max-width: 100%;
+    height: auto;
+    background-color: #000;
+    border: 1px solid #dee2e6;
+}
+
+/* File list styling */
+.list-group-item-action:hover {
+    background-color: #f8f9fa;
+}
+
+.list-group-item.active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Jumbotron custom - Clean medical inspired */
+.jumbotron {
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--accent-blue) 100%);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 3rem 2rem;
+    box-shadow: 0 4px 16px rgba(44, 90, 160, 0.15);
+}
+
+.jumbotron .btn-primary {
+    background-color: white;
+    color: var(--primary-blue);
+    border-color: white;
+    font-weight: 600;
+}
+
+.jumbotron .btn-primary:hover {
+    background-color: var(--light-blue);
+    border-color: var(--light-blue);
+    color: var(--secondary-blue);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.jumbotron .btn-outline-primary {
+    color: white;
+    border-color: white;
+    border-width: 1px;
+    background-color: transparent;
+}
+
+.jumbotron .btn-outline-primary:hover {
+    background-color: white;
+    color: var(--primary-blue);
+    border-color: white;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.jumbotron h1 {
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.jumbotron p {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    opacity: 0.95;
+}
+
+/* Navigation active state */
+.navbar-nav .nav-link.active {
+    font-weight: 600;
+    position: relative;
+}
+
+.navbar-nav .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 3px;
+    background-color: white;
+    border-radius: 2px;
+}
+
+/* Professional spacing - Use full width */
+.container-fluid {
+    max-width: 100%;
+    padding: 2rem 2rem;
+}
+
+/* Responsive max-width for very large screens */
+@media (min-width: 1920px) {
+    .container-fluid {
+        padding: 2rem 3rem;
+    }
+}
+
+@media (min-width: 2560px) {
+    .container-fluid {
+        padding: 2rem 4rem;
+    }
+}
+
+hr {
+    border-color: var(--border-light);
+    border-width: 2px;
+    margin: 2rem 0;
+}
+
+/* Enhanced spacing for sections */
+.row + .row {
+    margin-top: 2rem;
+}
+
+/* Professional medical color scheme for specific icons */
+.card-header i {
+    margin-right: 0.75rem;
+    color: var(--primary-blue);
+}
+
+.navbar-nav .nav-link i {
+    color: var(--text-muted);
+    margin-right: 0.5rem;
+}
+
+.navbar-nav .nav-link:hover i,
+.navbar-nav .nav-link.active i {
+    color: var(--primary-blue);
+}
+
+/* Button icons inherit button color */
+.btn i {
+    color: inherit;
+}
+
+/* Ensure button icons are visible */
+.btn-primary i, .btn-success i, .btn-info i, .btn-warning i, .btn-danger i {
+    color: white;
+}
+
+/* Loading states */
+.spinner-border {
+    color: var(--primary-blue);
+}
+
+/* Smooth transitions for better UX - specific elements only */
+.btn, .nav-link, .card, .form-control, .form-select, .table tbody tr {
+    transition: all 0.2s ease;
+}
+
+/* Button group spacing */
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Table responsive improvements */
+.table-responsive {
+    border-radius: 0.5rem;
+}
+
+/* Column width management for files table */
+#filesTable th:nth-child(1) { width: 12%; } /* Created */
+#filesTable th:nth-child(2) { width: 25%; } /* Filename */
+#filesTable th:nth-child(3) { width: 18%; } /* Patient */
+#filesTable th:nth-child(4) { width: 12%; } /* Study Date */
+#filesTable th:nth-child(5) { width: 8%; }  /* Modality */
+#filesTable th:nth-child(6) { width: 8%; }  /* Size */
+#filesTable th:nth-child(7) { width: 17%; } /* Actions */
+
+/* Ensure action buttons don't overflow */
+#filesTable .btn-group {
+    white-space: nowrap;
+}
+
+#filesTable .btn-group .btn {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+    min-width: auto;
+}
+
+/* Make filename column break words if needed */
+#filesTable .filename-cell {
+    word-break: break-word;
+    max-width: 0; /* Forces table to respect width percentages */
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+}
+
+/* Actions cell styling */
+#filesTable .actions-cell {
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* Prevent text wrapping in date/size columns */
+.text-nowrap {
+    white-space: nowrap;
+}
+
+/* Sortable table headers */
+.sortable-header {
+    cursor: pointer !important;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.sortable-header:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* tosijs sort indicators */
+.tosijs-sortable {
+    position: relative;
+}
+
+.tosijs-sortable::after {
+    content: "⇅";
+    position: absolute;
+    right: 8px;
+    opacity: 0.5;
+    font-size: 0.8rem;
+}
+
+.tosijs-sortable.tosijs-sort-asc::after {
+    content: "↑";
+    opacity: 1;
+}
+
+.tosijs-sortable.tosijs-sort-desc::after {
+    content: "↓";
+    opacity: 1;
+}
+
+/* Responsive table adjustments */
+@media (max-width: 992px) {
+    #filesTable th:nth-child(3), #filesTable td:nth-child(3) { display: none; } /* Hide Patient on medium screens */
+    #filesTable th:nth-child(4), #filesTable td:nth-child(4) { display: none; } /* Hide Study Date on medium screens */
+    
+    /* Adjust remaining column widths */
+    #filesTable th:nth-child(1) { width: 15%; } /* Created */
+    #filesTable th:nth-child(2) { width: 35%; } /* Filename */
+    #filesTable th:nth-child(5) { width: 12%; } /* Modality */
+    #filesTable th:nth-child(6) { width: 12%; } /* Size */
+    #filesTable th:nth-child(7) { width: 26%; } /* Actions */
+}
+
+@media (max-width: 768px) {
+    #filesTable th:nth-child(1), #filesTable td:nth-child(1) { display: none; } /* Hide Created on small screens */
+    #filesTable th:nth-child(5), #filesTable td:nth-child(5) { display: none; } /* Hide Modality on small screens */
+    
+    /* Stack action buttons vertically on very small screens */
+    #filesTable .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    #filesTable .btn-group .btn {
+        margin-bottom: 0.2rem;
+        border-radius: 0.25rem !important;
+    }
+    
+    /* Adjust remaining column widths for mobile */
+    #filesTable th:nth-child(2) { width: 45%; } /* Filename */
+    #filesTable th:nth-child(6) { width: 15%; } /* Size */
+    #filesTable th:nth-child(7) { width: 40%; } /* Actions */
+}
+
+/* Metadata table */
+.table-sm th {
+    width: 40%;
+    font-weight: 600;
+    color: #495057;
+}
+
+.table-sm td {
+    word-break: break-word;
+}
+
+/* Patient dropdown styling */
+.dropdown-menu {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-item small {
+    display: block;
+    margin-top: 2px;
+}
+
+#patientSearch {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+}
+
+#patientSearch:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Prevent dropdown from closing when clicking search */
+.dropdown-menu .form-control {
+    background-color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .jumbotron h1 {
+        font-size: 2rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        border-radius: 0.25rem !important;
+        margin-bottom: 0.5rem;
+    }
+    
+    .dropdown-menu {
+        max-height: 300px;
+    }
+}

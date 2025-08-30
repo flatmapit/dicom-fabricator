@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}DICOM Fabricator - Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-light p-5 rounded-3 mb-4">
+            <h1 class="display-4">
+                <i class="fas fa-x-ray text-primary"></i> DICOM Fabricator
+            </h1>
+            <p class="lead">Generate synthetic DICOM studies for testing clinical radiology integrations without PHI/PII</p>
+            <hr class="my-4">
+            <p>Create fake medical imaging data with embedded metadata for testing PACS servers, DICOM viewers, and clinical system integrations.</p>
+            <div class="btn-group" role="group">
+                <a class="btn btn-primary btn-lg" href="/generator" role="button">
+                    <i class="fas fa-play"></i> Start Generating
+                </a>
+                <a class="btn btn-outline-primary btn-lg" href="/patients" role="button">
+                    <i class="fas fa-users"></i> Manage Patients
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Features -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-user-plus text-primary"></i> Patient Management
+                </h5>
+                <p class="card-text">Create and manage synthetic patient records with realistic demographics and identifiers.</p>
+                <a href="/patients" class="btn btn-outline-primary">Manage Patients</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-file-medical text-success"></i> DICOM Generation
+                </h5>
+                <p class="card-text">Generate DX (Digital Radiography) studies with configurable parameters and embedded metadata.</p>
+                <a href="/generator" class="btn btn-outline-success">Generate DICOM</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-eye text-info"></i> DICOM Viewer
+                </h5>
+                <p class="card-text">View generated DICOM files with metadata display and image preview capabilities.</p>
+                <a href="/viewer" class="btn btn-outline-info">View Files</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- PACS Status -->
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-server"></i> PACS Server Status</h5>
+            </div>
+            <div class="card-body">
+                <div id="pacs-status">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Checking...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="col-xl-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Quick Stats</h5>
+            </div>
+            <div class="card-body">
+                <div id="stats-container">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Check all PACS configurations status
+fetch('/api/pacs/configs')
+    .then(response => response.json())
+    .then(data => {
+        const statusDiv = document.getElementById('pacs-status');
+        
+        if (data.success && data.configs.length > 0) {
+            let html = '<div class="list-group list-group-flush">';
+            
+            data.configs.forEach(config => {
+                const statusIcon = config.test_status === 'success' ? 
+                    '<i class="fas fa-check-circle text-success"></i>' : 
+                    config.test_status === 'error' ? 
+                    '<i class="fas fa-times-circle text-danger"></i>' :
+                    '<i class="fas fa-question-circle text-muted"></i>';
+                
+                const statusText = config.test_status === 'success' ? 'Online' : 
+                                 config.test_status === 'error' ? 'Offline' : 'Unknown';
+                
+                const timestamp = config.last_tested ? 
+                    new Date(config.last_tested).toLocaleString() : 'Never tested';
+                
+                html += `
+                    <div class="list-group-item px-0 py-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    ${statusIcon}
+                                    <strong class="ms-2">${config.name}</strong>
+                                    ${config.is_default ? '<span class="badge bg-primary ms-2">Default</span>' : ''}
+                                </div>
+                                <div class="small text-muted">
+                                    <span class="me-3"><i class="fas fa-network-wired"></i> ${config.aec}@${config.host}:${config.port}</span>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="small fw-bold ${config.test_status === 'success' ? 'text-success' : config.test_status === 'error' ? 'text-danger' : 'text-muted'}">${statusText}</div>
+                                <div class="small text-muted">${timestamp}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            statusDiv.innerHTML = html;
+        } else {
+            statusDiv.innerHTML = `
+                <div class="alert alert-warning mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> No PACS configurations found
+                    <p class="mb-0 mt-2">Add PACS configurations in the <a href="/pacs">PACS Management</a> page</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        document.getElementById('pacs-status').innerHTML = `
+            <div class="alert alert-danger mb-0">
+                <i class="fas fa-times-circle"></i> Error loading PACS configurations
+            </div>
+        `;
+    });
+
+// Load stats
+Promise.all([
+    fetch('/api/patients'),
+    fetch('/api/dicom/list')
+]).then(responses => Promise.all(responses.map(r => r.json())))
+.then(([patients, files]) => {
+    document.getElementById('stats-container').innerHTML = `
+        <ul class="list-unstyled">
+            <li><i class="fas fa-users text-primary"></i> <strong>${patients.length}</strong> Patients</li>
+            <li><i class="fas fa-file text-success"></i> <strong>${files.length}</strong> DICOM Files</li>
+            <li><i class="fas fa-database text-info"></i> <strong>${(files.reduce((sum, f) => sum + (f.size || 0), 0) / 1024 / 1024).toFixed(2)} MB</strong> Total Size</li>
+        </ul>
+    `;
+})
+.catch(error => {
+    document.getElementById('stats-container').innerHTML = `
+        <div class="alert alert-danger">Error loading stats</div>
+    `;
+});
+</script>
+{% endblock %}

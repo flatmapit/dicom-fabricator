@@ -1,0 +1,3086 @@
+{% extends "base.html" %}
+
+{% block title %}DICOM Fabricator - Generator{% endblock %}
+
+{% block head %}
+<style>
+/* File card styling for scalable interface */
+.file-card {
+    transition: all 0.15s ease-in-out;
+    border: 1px solid #dee2e6;
+}
+
+.file-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-color: #007bff;
+}
+
+.file-preview {
+    transition: all 0.15s ease-in-out;
+}
+
+.file-preview img {
+    border-radius: 4px;
+}
+
+/* Accordion styling for series view */
+.accordion-button:not(.collapsed) {
+    background-color: #e7f3ff;
+    color: #0c63e4;
+}
+
+.accordion-button:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Grid view styling */
+.file-grid-container {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background: #fff;
+}
+
+.file-grid-item {
+    transition: opacity 0.15s ease-in-out;
+}
+
+.file-grid-item[style*="display: none"] {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* View mode toggle buttons */
+.btn-check:checked + .btn-outline-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: #fff;
+}
+
+/* Search input styling */
+#fileSearchInput:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Load more button styling */
+.btn-outline-primary {
+    transition: all 0.15s ease-in-out;
+}
+
+.btn-outline-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .file-preview {
+        height: 60px !important;
+    }
+    
+    .col-md-3 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+    
+    .card-header .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .card-header .btn-group .btn {
+        border-radius: 0.375rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    #fileSearchInput {
+        width: 100% !important;
+        margin-top: 0.5rem;
+    }
+}
+
+/* Performance optimization for large lists */
+.file-card .card-body {
+    will-change: transform;
+}
+
+/* Search highlighting */
+.search-highlight {
+    border: 2px solid #ffc107 !important;
+    box-shadow: 0 0 8px rgba(255, 193, 7, 0.4) !important;
+}
+
+.search-highlight .file-preview {
+    border: 1px solid #ffc107;
+}
+
+/* Loading states */
+.loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-file-medical"></i> Local Study DICOM Generator</h2>
+        <p class="text-muted mb-3">
+            Create synthetic DICOM test studies and series on your local disk. Generated files include realistic metadata 
+            and embedded test images that can be sent to PACS servers for integration testing and clinical workflow validation.
+        </p>
+        <hr>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <button type="button" class="btn btn-primary btn-lg" onclick="showGenerationModal()">
+            <i class="fas fa-file-medical"></i> Generate DICOM Study...
+        </button>
+    </div>
+</div>
+
+<!-- Generation Parameters Modal -->
+<div class="modal fade" id="generationModal" tabindex="-1" aria-labelledby="generationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="generationModalLabel">Generate DICOM Study</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Tab Navigation -->
+                <ul class="nav nav-tabs" id="generationTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-panel" 
+                                type="button" role="tab" aria-controls="manual-panel" aria-selected="true">
+                            <i class="fas fa-edit"></i> Enter Study Data
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="orm-tab" data-bs-toggle="tab" data-bs-target="#orm-panel" 
+                                type="button" role="tab" aria-controls="orm-panel" aria-selected="false">
+                            <i class="fas fa-file-code"></i> Create study for ORM
+                        </button>
+                    </li>
+                </ul>
+                
+                <!-- Tab Content -->
+                <div class="tab-content" id="generationTabContent">
+                    <!-- Manual Entry Tab -->
+                    <div class="tab-pane fade show active" id="manual-panel" role="tabpanel" aria-labelledby="manual-tab">
+                        <div class="mt-3">
+                <p class="text-muted mb-3">
+                    <i class="fas fa-info-circle"></i> Select previous patient to reuse demographics, or enter patient details for generated DICOM. Leave accession and description empty to auto-generate these values.
+                </p>
+                <form id="generateForm">
+                    <div class="mb-3">
+                        <label for="patientSelect" class="form-label">Select Patient</label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start" type="button" id="patientSelectBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                -- Random Patient --
+                            </button>
+                            <div class="dropdown-menu w-100" id="patientDropdown">
+                                <div class="px-3 py-2">
+                                    <input type="text" class="form-control form-control-sm" id="patientSearch" placeholder="Search patients..." onkeyup="filterPatients()">
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="#" onclick="selectPatient('', '-- Random Patient --', '', '')">-- Random Patient --</a>
+                                <div id="patientList"></div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="selectedPatientId" value="">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="patientName" class="form-label">Patient Name (LAST^FIRST)</label>
+                        <input type="text" class="form-control" id="patientName" placeholder="e.g., DOE^JOHN">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="patientId" class="form-label">Patient ID</label>
+                        <input type="text" class="form-control" id="patientId" placeholder="e.g., PID123">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="accession" class="form-label">Accession Number</label>
+                        <input type="text" class="form-control" id="accession" placeholder="Auto-generate if empty">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="studyDesc" class="form-label">Study Description</label>
+                        <input type="text" class="form-control" id="studyDesc" value="">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="seriesCount" class="form-label">Number of Series</label>
+                        <select class="form-select" id="seriesCount" onchange="updateSeriesInputs()">
+                            <option value="1" selected>1 Series</option>
+                            <option value="2">2 Series</option>
+                            <option value="3">3 Series</option>
+                            <option value="4">4 Series</option>
+                            <option value="5">5 Series</option>
+                            <option value="6">6 Series</option>
+                            <option value="7">7 Series</option>
+                            <option value="8">8 Series</option>
+                            <option value="9">9 Series</option>
+                        </select>
+                    </div>
+                    
+                    <div id="seriesContainer" style="max-height: 300px; overflow-y: auto;">
+                        <!-- Series configuration will be inserted here dynamically -->
+                    </div>
+                </form>
+                        </div>
+                    </div>
+                    
+                    <!-- ORM HL7 Tab -->
+                    <div class="tab-pane fade" id="orm-panel" role="tabpanel" aria-labelledby="orm-tab">
+                        <div class="mt-3">
+                            <p class="text-muted mb-3">
+                                <i class="fas fa-info-circle"></i> Paste an ORM HL7 message below. The tool will extract patient data, accession numbers, and procedure codes to generate a DICOM study.
+                            </p>
+                            
+                            <div class="mb-3">
+                                <label for="ormMessage" class="form-label">ORM HL7 Message</label>
+                                <textarea class="form-control font-monospace" id="ormMessage" rows="10" 
+                                          style="--bs-placeholder-opacity: 0.3;"
+                                          placeholder="MSH|^~\&|System|Facility|||20240312092742+1100||ORM^O01|123456|P|2.4&#10;PID|1||6350600^^^AMI^FN|1757010|LASTNAME^FIRSTNAME||19981231|F|||1 STREET ADDRESS^^CITY^POSTCODE||^^CP^email@email.com^^^0444444445|0000000000||||||||||||||||N&#10;PV1|1|I^IN|Location|||||278796^REFERRER^DOCTOR^^^^^^LOC001|||||||||||4498889|NC|||||||||||||||||||FACILITY|||||20240312&#10;ORC|SC||ACCESSION||CM|||||USER^SYSTEM^USER^^^||278796^REFERRER^DOCTOR^^^^^^LOC001|||||FACILITY&#10;OBR|1|ACCESSION|ACCESSION|PROC001^PROCEDURE NAME^L|N|20240312092727+1100|..."></textarea>
+                                <div class="form-text">
+                                    Supported HL7 segments: MSH (header), PID (patient), ORC (order), OBR (observation request)
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-outline-primary" onclick="parseORM()">
+                                    <i class="fas fa-search"></i> Parse ORM Message
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary ms-2" onclick="clearORM()">
+                                    <i class="fas fa-eraser"></i> Clear
+                                </button>
+                            </div>
+                            
+                            <!-- Parsed Data Display -->
+                            <div id="parsedData" style="display: none;">
+                                <div class="alert alert-success">
+                                    <i class="fas fa-check-circle"></i> ORM message parsed successfully!
+                                </div>
+                                
+                                <h6>Extracted Patient Data:</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="ormPatientName" class="form-label">Patient Name</label>
+                                        <input type="text" class="form-control" id="ormPatientName" readonly>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="ormPatientId" class="form-label">Patient ID</label>
+                                        <input type="text" class="form-control" id="ormPatientId" readonly>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <label for="ormBirthDate" class="form-label">Birth Date</label>
+                                        <input type="text" class="form-control" id="ormBirthDate" readonly>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="ormSex" class="form-label">Sex</label>
+                                        <input type="text" class="form-control" id="ormSex" readonly>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="ormAccession" class="form-label">Accession Number</label>
+                                        <input type="text" class="form-control" id="ormAccession" readonly>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="ormStudyDate" class="form-label">Study Date</label>
+                                        <input type="text" class="form-control" id="ormStudyDate" readonly>
+                                    </div>
+                                </div>
+                                
+                                <h6>Study Configuration:</h6>
+                                <div class="mb-3">
+                                    <label for="ormStudyDesc" class="form-label">Study Description</label>
+                                    <input type="text" class="form-control" id="ormStudyDesc">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Series from ORM Orders:</label>
+                                    <div id="ormSeriesContainer">
+                                        <!-- Parsed series will be displayed here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="generateDICOM()">
+                    <i class="fas fa-cogs"></i> Generate DICOM
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Study Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailsModalLabel">Study Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="detailsContainer">
+                <p class="text-muted">No study selected</p>
+            </div>
+            <div class="modal-footer" id="detailsModalFooter">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="mb-0"><i class="fas fa-folder-open"></i> Generated Studies</h5>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control form-control-sm" id="studySearchField" 
+                               placeholder="Search studies..." onkeyup="filterStudies()">
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <button class="btn btn-outline-danger btn-sm me-1" onclick="deleteSelectedStudies()" 
+                                title="Delete selected studies" data-bs-toggle="tooltip" id="deleteSelectedBtn" disabled>
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" onclick="exportToCsv()" 
+                                title="Export all DICOM files data to CSV" data-bs-toggle="tooltip">
+                            <i class="fas fa-file-csv"></i> Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="filesTableContainer">
+                    <p class="text-muted">Loading files...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+let filesTable;
+let allPatients = [];
+let pacsConfigs = [];
+let allStudies = []; // Store all studies for searching
+
+// Function to generate default study description with current date/time
+function generateDefaultStudyDescription() {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short',
+        hour12: false
+    });
+    
+    const formattedDateTime = formatter.format(now);
+    return `Generated Study Description ${formattedDateTime}`;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadPatients();
+    loadStudies();
+    loadPacsConfigs();
+    updateSeriesInputs(); // Initialize series inputs
+    
+    // Set default study descriptions
+    const defaultDesc = generateDefaultStudyDescription();
+    document.getElementById('studyDesc').value = defaultDesc;
+    document.getElementById('ormStudyDesc').value = defaultDesc;
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Prevent dropdown from closing when clicking inside search
+    document.getElementById('patientSearch').addEventListener('click', function(e) {
+        e.stopPropagation();
+    });
+});
+
+function updateSeriesInputs() {
+    const seriesCount = parseInt(document.getElementById('seriesCount').value);
+    const container = document.getElementById('seriesContainer');
+    
+    container.innerHTML = '';
+    
+    for (let i = 1; i <= seriesCount; i++) {
+        const seriesDiv = document.createElement('div');
+        seriesDiv.className = 'mb-3 p-3 border rounded bg-light';
+        seriesDiv.innerHTML = `
+            <h6 class="mb-3 text-primary"><i class="fas fa-layer-group"></i> Series ${i} Configuration</h6>
+            <div class="row mb-2">
+                <div class="col-md-4">
+                    <label for="series${i}Images" class="form-label">Images in Series</label>
+                    <input type="number" class="form-control" id="series${i}Images" min="1" max="10" value="1">
+                </div>
+                <div class="col-md-4">
+                    <label for="series${i}Modality" class="form-label">Modality</label>
+                    <select class="form-select" id="series${i}Modality">
+                        <option value="DX" selected>DX - Digital Radiography</option>
+                        <option value="CT">CT - Computed Tomography</option>
+                        <option value="MR">MR - Magnetic Resonance</option>
+                        <option value="US">US - Ultrasound</option>
+                        <option value="CR">CR - Computed Radiography</option>
+                        <option value="MG">MG - Mammography</option>
+                        <option value="NM">NM - Nuclear Medicine</option>
+                        <option value="PT">PT - Positron Emission Tomography</option>
+                        <option value="XA">XA - X-Ray Angiography</option>
+                        <option value="RF">RF - Radio Fluoroscopy</option>
+                        <option value="ES">ES - Endoscopy</option>
+                        <option value="OT">OT - Other</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="series${i}Procedure" class="form-label">Procedure Code</label>
+                    <input type="text" class="form-control" id="series${i}Procedure" placeholder="e.g., PA-CHEST, LAT-CHEST" value="PA-VIEW">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="series${i}Compression" class="form-label">Image Compression</label>
+                    <select class="form-select" id="series${i}Compression">
+                        <option value="uncompressed" selected>Uncompressed (Default)</option>
+                        <option value="jpeg_lossless">JPEG Lossless (Medical Standard)</option>
+                        <option value="jpeg2000">JPEG2000 (Wavelet)</option>
+                        <option value="rle">RLE (Run Length Encoding)</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted">
+                        <i class="fas fa-info-circle"></i> Compression affects file size and compatibility
+                    </label>
+                    <div class="text-muted small">
+                        Choose based on your PACS system's supported formats
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(seriesDiv);
+    }
+}
+
+function loadPatients() {
+    fetch('/api/patients')
+        .then(response => response.json())
+        .then(data => {
+            allPatients = data;
+            renderPatientDropdown(data);
+        });
+}
+
+function renderPatientDropdown(patients) {
+    const patientList = document.getElementById('patientList');
+    patientList.innerHTML = '';
+    
+    patients.forEach(patient => {
+        const item = document.createElement('a');
+        item.className = 'dropdown-item';
+        item.href = '#';
+        item.innerHTML = `
+            <div class="d-flex justify-content-between">
+                <span><strong>${patient.last_name}, ${patient.first_name}</strong></span>
+                <small class="text-muted">${patient.mrn}</small>
+            </div>
+            <small class="text-muted">${patient.birth_date} • ${patient.sex}</small>
+        `;
+        item.onclick = function(e) {
+            e.preventDefault();
+            selectPatient(
+                patient.id, 
+                `${patient.last_name}, ${patient.first_name} (${patient.mrn})`,
+                `${patient.last_name}^${patient.first_name}`,
+                patient.mrn
+            );
+        };
+        patientList.appendChild(item);
+    });
+}
+
+function filterPatients() {
+    const searchTerm = document.getElementById('patientSearch').value.toLowerCase();
+    const filteredPatients = allPatients.filter(patient => 
+        patient.first_name.toLowerCase().includes(searchTerm) ||
+        patient.last_name.toLowerCase().includes(searchTerm) ||
+        patient.mrn.toLowerCase().includes(searchTerm) ||
+        patient.patient_id.toLowerCase().includes(searchTerm)
+    );
+    renderPatientDropdown(filteredPatients);
+}
+
+function selectPatient(patientId, displayText, patientName, mrn) {
+    document.getElementById('patientSelectBtn').textContent = displayText;
+    document.getElementById('selectedPatientId').value = patientId;
+    document.getElementById('patientName').value = patientName;
+    document.getElementById('patientId').value = mrn;
+    
+    // Close dropdown
+    const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('patientSelectBtn'));
+    if (dropdown) dropdown.hide();
+}
+
+function updatePatientInfo() {
+    // This function is now handled by selectPatient
+}
+
+function showGenerationModal() {
+    const modal = new bootstrap.Modal(document.getElementById('generationModal'));
+    modal.show();
+}
+
+// Old generateDICOM function removed - now using the updated version that handles both ORM and manual generation
+
+function loadStudies() {
+    fetch('/api/dicom/studies')
+        .then(response => response.json())
+        .then(studies => {
+            allStudies = studies; // Store for searching
+            renderStudiesTable(studies);
+        })
+        .catch(error => {
+            document.getElementById('filesTableContainer').innerHTML = 
+                '<div class="alert alert-danger">Error loading studies</div>';
+        });
+}
+
+function renderStudiesTable(studies) {
+    const container = document.getElementById('filesTableContainer');
+    
+    if (studies.length === 0) {
+        container.innerHTML = '<p class="text-muted">No DICOM studies found</p>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="table-responsive" style="max-width: 95vw;">
+            <table id="studiesTable" class="table table-striped table-hover table-sm sortable-table" style="font-size: 0.8rem;">
+                <thead>
+                    <tr>
+                        <th style="width: 3%;">
+                            <input type="checkbox" id="selectAllStudies" onchange="toggleAllStudies(this)" title="Select/deselect all studies">
+                        </th>
+                        <th class="sortable" data-column="1" data-type="string" style="width: 14%;" title="Click to sort by creation time">Created</th>
+                        <th class="sortable" data-column="2" data-type="string" style="width: 17%;" title="Click to sort by patient name">Patient</th>
+                        <th class="sortable" data-column="3" data-type="string" style="width: 26%;" title="Click to sort by study description">Study Description</th>
+                        <th class="sortable" data-column="4" data-type="string" style="width: 9%;" title="Click to sort by study date">Study Date</th>
+                        <th class="sortable" data-column="5" data-type="string" style="width: 11%;" title="Click to sort by accession number">Accession</th>
+                        <th class="sortable" data-column="6" data-type="string" style="width: 8%;" title="Click to sort by modalities">Modality</th>
+                        <th class="sortable" data-column="7" data-type="number" style="width: 6%;" title="Click to sort by series count"># Series</th>
+                        <th class="sortable" data-column="8" data-type="number" style="width: 6%;" title="Click to sort by total files"># Images</th>
+                        <th class="sortable" data-column="9" data-type="number" style="width: 8%;" title="Click to sort by total size">Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${studies.map(study => {
+                        const seriesCount = Object.keys(study.series).length;
+                        const totalSizeMB = (study.total_size / 1024 / 1024).toFixed(2);
+                        
+                        // Extract modalities from series
+                        const modalities = Object.values(study.series).map(series => 
+                            series.modality || series.files?.[0]?.modality || 'DX'
+                        );
+                        const modalityList = modalities.join(',');
+                        
+                        return `
+                        <tr title="Click to view study details">
+                            <td>
+                                <input type="checkbox" class="study-checkbox" value="${study.study_uid}" 
+                                       onchange="updateDeleteButton()" onclick="event.stopPropagation()">
+                            </td>
+                            <td data-sort="${study.created || '0'}" style="cursor: pointer;" onclick="showStudyDetails('${study.study_uid}')">
+                                <span class="text-nowrap">${study.created_iso ? new Date(study.created_iso).toLocaleString() : study.created}</span>
+                            </td>
+                            <td style="cursor: pointer;" onclick="showStudyDetails('${study.study_uid}')">${study.patient_name || '-'}</td>
+                            <td style="cursor: pointer;" onclick="showStudyDetails('${study.study_uid}')">
+                                <div class="text-truncate" style="max-width: 400px;" title="${study.study_description}">
+                                    ${study.study_description || '-'}
+                                </div>
+                            </td>
+                            <td data-sort="${study.study_date || '0'}" style="cursor: pointer;" onclick="showStudyDetails('${study.study_uid}')">${study.study_date || '-'}</td>
+                            <td style="cursor: pointer;" onclick="showStudyDetails('${study.study_uid}')">${study.accession_number || '-'}</td>
+                            <td style="cursor: pointer;" onclick="showStudyDetails('${study.study_uid}')">
+                                <div class="text-truncate" style="max-width: 100px;" title="${modalityList}">
+                                    ${modalityList || '-'}
+                                </div>
+                            </td>
+                            <td data-sort="${seriesCount}" style="cursor: pointer;" onclick="showStudyDetails('${study.study_uid}')">
+                                <span class="badge bg-primary">${seriesCount}</span>
+                            </td>
+                            <td data-sort="${study.total_files}" style="cursor: pointer;" onclick="showStudyDetails('${study.study_uid}')">
+                                <span class="badge bg-info">${study.total_files}</span>
+                            </td>
+                            <td data-sort="${study.total_size}" style="cursor: pointer;" onclick="showStudyDetails('${study.study_uid}')">
+                                <span class="text-nowrap">${totalSizeMB} MB</span>
+                            </td>
+                        </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    // Initialize tooltips
+    initializeTooltips();
+    
+    // Initialize tosijs table with enhanced configuration
+    initializeStudiesTable();
+}
+
+function initializeStudiesTable() {
+    // Initialize custom table sorting
+    const table = document.getElementById('studiesTable');
+    if (table) {
+        console.log('Initializing custom table sorting...');
+        
+        // Remove existing event listeners
+        const headers = table.querySelectorAll('th.sortable');
+        headers.forEach(header => {
+            header.replaceWith(header.cloneNode(true));
+        });
+        
+        // Add click event listeners to sortable headers
+        const newHeaders = table.querySelectorAll('th.sortable');
+        newHeaders.forEach(header => {
+            header.addEventListener('click', function() {
+                const column = parseInt(this.getAttribute('data-column'));
+                const type = this.getAttribute('data-type');
+                sortTable(table, column, type, this);
+            });
+        });
+        
+        console.log('Custom table sorting initialized successfully');
+    } else {
+        console.warn('studiesTable element not found');
+    }
+}
+
+function sortTable(table, column, type, headerElement) {
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    // Determine sort direction
+    let direction = 'asc';
+    if (headerElement.classList.contains('sort-asc')) {
+        direction = 'desc';
+    } else if (headerElement.classList.contains('sort-desc')) {
+        direction = 'asc';
+    }
+    
+    // Clear all sort classes from headers
+    table.querySelectorAll('th.sortable').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+    });
+    
+    // Add sort class to current header
+    headerElement.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
+    
+    // Sort rows
+    rows.sort((a, b) => {
+        const aCell = a.children[column];
+        const bCell = b.children[column];
+        
+        let aValue = aCell.textContent.trim();
+        let bValue = bCell.textContent.trim();
+        
+        // Use data-sort attribute if available for better sorting
+        if (aCell.hasAttribute('data-sort')) {
+            aValue = aCell.getAttribute('data-sort');
+        }
+        if (bCell.hasAttribute('data-sort')) {
+            bValue = bCell.getAttribute('data-sort');
+        }
+        
+        // Convert to appropriate type
+        if (type === 'number') {
+            aValue = parseFloat(aValue) || 0;
+            bValue = parseFloat(bValue) || 0;
+        } else {
+            aValue = aValue.toLowerCase();
+            bValue = bValue.toLowerCase();
+        }
+        
+        // Compare values
+        let result = 0;
+        if (aValue < bValue) {
+            result = -1;
+        } else if (aValue > bValue) {
+            result = 1;
+        }
+        
+        return direction === 'desc' ? -result : result;
+    });
+    
+    // Re-append sorted rows
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+function initializeTooltips() {
+    // Initialize Bootstrap tooltips for dynamically added elements
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
+
+function loadGeneratedFileDetails(filename) {
+    // Don't URL encode since Flask's path converter handles slashes
+    fetch(`/api/dicom/view/${filename}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                updateGeneratedFileCard(filename, null, `Error: ${data.error}`);
+                return;
+            }
+            
+            const metadata = data.metadata;
+            const metadataHtml = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            ${data.image ? 
+                                `<img src="${data.image}" class="img-fluid rounded border" alt="DICOM Preview" style="width: 100%; height: auto;">` :
+                                '<div class="alert alert-secondary">No image available</div>'
+                            }
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <h6 class="card-title">${filename}</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th style="width: 40%;">Patient: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0010,0010)"></i></th>
+                                        <td>${metadata.PatientName}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Patient ID: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0010,0020)"></i></th>
+                                        <td>${metadata.PatientID}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Birth Date: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0010,0030)"></i></th>
+                                        <td>${metadata.PatientBirthDate}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Sex: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0010,0040)"></i></th>
+                                        <td>${metadata.PatientSex}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Study Date: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,0020)"></i></th>
+                                        <td>${metadata.StudyDate}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Study Description: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,1030)"></i></th>
+                                        <td>${metadata.StudyDescription}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Series Description: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,103E)"></i></th>
+                                        <td>${metadata.SeriesDescription || 'N/A'}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Accession: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,0050)"></i></th>
+                                        <td>${metadata.AccessionNumber}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Modality: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,0060)"></i></th>
+                                        <td>${metadata.Modality}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- DICOM Header Tags -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0"><i class="fas fa-tags"></i> DICOM Header Tags</h6>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="copyDicomHeaders('${filename}')" 
+                                        title="Copy DICOM headers to clipboard" data-bs-toggle="tooltip">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <pre class="bg-light p-3 mb-0" style="font-size: 12px; max-height: 300px; overflow-y: auto;" id="dicomHeaders-${filename.replace(/[^a-zA-Z0-9]/g, '_')}">Loading DICOM headers...</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            updateGeneratedFileCard(filename, metadataHtml);
+            
+            // Load DICOM headers
+            loadDicomHeaders(filename);
+            
+            // Initialize tooltips for the newly added buttons
+            initializeTooltips();
+        })
+        .catch(error => {
+            updateGeneratedFileCard(filename, null, `Error loading file details: ${error.message}`);
+        });
+}
+
+function updateGeneratedFileCard(filename, content, errorMessage = null) {
+    // Try both formats - with filepath (slashes replaced) and without
+    let cardElement = document.getElementById(`file-${filename.replace(/[\/\\]/g, '_')}`);
+    if (!cardElement) {
+        cardElement = document.getElementById(`file-${filename}`);
+    }
+    if (!cardElement) return;
+    
+    const cardBody = cardElement.querySelector('.card-body');
+    if (errorMessage) {
+        cardBody.innerHTML = `
+            <h6 class="card-title">${filename}</h6>
+            <div class="alert alert-danger">${errorMessage}</div>
+        `;
+    } else if (content) {
+        cardBody.innerHTML = content;
+    }
+}
+
+function launchDicomViewer(filename) {
+    // Show loading indicator
+    const event = window.event;
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    fetch(`/api/dicom/launch/${filename}`, {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                showAlert('success', data.message);
+            } else {
+                // Show error with suggestion if available
+                const message = data.suggestion ? 
+                    `${data.error}\n\nSuggestion: ${data.suggestion}` : 
+                    data.error;
+                showAlert('warning', message);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Error launching DICOM viewer: ' + error.message);
+        })
+        .finally(() => {
+            // Restore button
+            button.innerHTML = originalContent;
+            button.disabled = false;
+        });
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+function exportToCsv() {
+    // Show loading indicator
+    showAlert('info', 'Preparing CSV export...');
+    
+    // Trigger CSV download from server
+    const link = document.createElement('a');
+    link.href = '/api/dicom/export/csv';
+    link.download = `dicom_files_${new Date().toISOString().slice(0,19).replace(/[:-]/g,'')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setTimeout(() => {
+        showAlert('success', 'CSV export completed successfully!');
+    }, 1000);
+}
+
+function deleteFile(filename) {
+    if (!confirm(`Delete ${filename}?`)) return;
+    
+    fetch(`/api/dicom/delete/${filename}`, {method: 'DELETE'})
+        .then(response => response.json())
+        .then(data => {
+            loadStudies();
+        });
+}
+
+function sendStudyToPACS(studyFolder) {
+    // Show confirmation dialog
+    if (!confirm('Send this study to PACS server?\n\nThis will send all series and images in the study.')) {
+        return;
+    }
+    
+    // Show loading indicator
+    const event = window.event;
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    button.disabled = true;
+    
+    // Extract relative path from study folder
+    const relativePath = studyFolder.replace('dicom_output/', '');
+    
+    fetch('/api/pacs/send-study', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            study_folder: relativePath
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const studyInfo = data.study_info;
+            const details = data.details;
+            
+            showAlert('success', 
+                `✅ Successfully sent study to PACS!\n\n` +
+                `Patient: ${studyInfo.patient_name}\n` +
+                `Study: ${studyInfo.study_description}\n` +
+                `Files sent: ${details.files_sent} (${details.series_count} series)`
+            );
+        } else {
+            showAlert('danger', 
+                `❌ Failed to send study to PACS\n\n` +
+                `Error: ${data.error}\n\n` +
+                `Make sure the PACS server is running:\n` +
+                `./start_pacs.sh`
+            );
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 
+            `❌ Error sending study to PACS\n\n` +
+            `${error.message}\n\n` +
+            `Check that PACS server is running and storescu is installed.`
+        );
+    })
+    .finally(() => {
+        // Restore button
+        button.innerHTML = originalContent;
+        button.disabled = false;
+    });
+}
+
+async function loadPacsConfigs() {
+    try {
+        const response = await fetch('/api/pacs/configs');
+        const data = await response.json();
+        
+        if (data.success) {
+            pacsConfigs = data.configs.filter(config => config.is_active);
+            updatePacsSelect();
+        } else {
+            console.error('Error loading PACS configs:', data.error);
+        }
+    } catch (error) {
+        console.error('Network error loading PACS configs:', error);
+    }
+}
+
+function updatePacsSelect() {
+    const select = document.getElementById('pacsSelect');
+    select.innerHTML = '';
+    
+    if (pacsConfigs.length === 0) {
+        select.innerHTML = '<option value="">No PACS configurations available</option>';
+        return;
+    }
+    
+    let hasRememberedSelection = false;
+    const rememberedPacs = window.PacsMemory ? window.PacsMemory.getRememberedPacs() : null;
+    
+    pacsConfigs.forEach(config => {
+        const option = document.createElement('option');
+        option.value = config.id;
+        option.textContent = `${config.name} (${config.host}:${config.port})`;
+        
+        // Prefer remembered selection over default
+        if (rememberedPacs && config.id === rememberedPacs) {
+            option.selected = true;
+            hasRememberedSelection = true;
+        } else if (!hasRememberedSelection && config.is_default) {
+            option.selected = true;
+        }
+        
+        select.appendChild(option);
+    });
+}
+
+function getPacsConfig(configId) {
+    return pacsConfigs.find(config => config.id === configId);
+}
+
+function getSelectedPacsName() {
+    const pacsSelect = document.getElementById('pacsSelect');
+    const selectedOption = pacsSelect.selectedOptions[0];
+    return selectedOption ? selectedOption.textContent : 'Unknown PACS';
+}
+
+
+async function queryStudyStatus(studyUID, pacsConfigId) {
+    try {
+        const response = await fetch('/api/pacs/query-study', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                study_uid: studyUID,
+                pacs_config_id: pacsConfigId
+            })
+        });
+        
+        const data = await response.json();
+        return data.success && data.exists;
+    } catch (error) {
+        console.error('Error querying study status:', error);
+        return false;
+    }
+}
+
+// PACS Dialog Functions
+function showPacsDialog(studyUID) {
+    // Store the current study UID for use in dialog actions
+    window.currentStudyUID = studyUID;
+    
+    // Clear any previous query status note
+    document.getElementById('queryStatusNote').style.display = 'none';
+    
+    // Display the Study UID in the modal
+    document.getElementById('studyUIDDisplay').textContent = studyUID;
+    document.getElementById('studyUIDDisplay').title = studyUID;
+    
+    // Refresh PACS configs and show modal
+    loadPacsConfigs().then(() => {
+        const modal = new bootstrap.Modal(document.getElementById('pacsModal'));
+        modal.show();
+    });
+}
+
+// DICOM PACS Log functions
+function clearPacsLog() {
+    const logContainer = document.getElementById('pacsCommandLog');
+    logContainer.innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-terminal fa-2x mb-2 opacity-50"></i>
+            <div>DICOM command output will appear here</div>
+            <small class="text-muted">Send or query to see command logs</small>
+        </div>
+    `;
+}
+
+function addPacsLogEntry(type, message, timestamp = null) {
+    const logContainer = document.getElementById('pacsCommandLog');
+    const time = timestamp || new Date().toLocaleTimeString();
+    
+    // Clear the placeholder if it exists
+    if (logContainer.querySelector('.text-center')) {
+        logContainer.innerHTML = '';
+    }
+    
+    const logEntry = document.createElement('div');
+    logEntry.className = `mb-1 ${type === 'error' ? 'text-danger' : type === 'success' ? 'text-success' : type === 'warning' ? 'text-warning' : 'text-info'}`;
+    
+    const icon = type === 'error' ? 'fa-exclamation-circle' : 
+                type === 'success' ? 'fa-check-circle' : 
+                type === 'warning' ? 'fa-exclamation-triangle' : 
+                'fa-info-circle';
+    
+    logEntry.innerHTML = `
+        <span class="text-muted">[${time}]</span> 
+        <i class="fas ${icon}"></i> 
+        ${message}
+    `;
+    
+    logContainer.appendChild(logEntry);
+    
+    // Auto-scroll to bottom
+    logContainer.scrollTop = logContainer.scrollHeight;
+}
+
+function addPacsCommandOutput(command, output, exitCode = 0) {
+    const logContainer = document.getElementById('pacsCommandLog');
+    const time = new Date().toLocaleTimeString();
+    
+    // Clear the placeholder if it exists
+    if (logContainer.querySelector('.text-center')) {
+        logContainer.innerHTML = '';
+    }
+    
+    // Add command entry
+    const commandEntry = document.createElement('div');
+    commandEntry.className = 'mb-2';
+    commandEntry.innerHTML = `
+        <div class="text-muted">[${time}] <i class="fas fa-terminal"></i> <strong>Command:</strong></div>
+        <div class="text-info ps-3 font-monospace small">${command}</div>
+    `;
+    logContainer.appendChild(commandEntry);
+    
+    // Add output entry
+    if (output) {
+        const outputEntry = document.createElement('div');
+        outputEntry.className = `mb-2 ${exitCode === 0 ? 'text-success' : 'text-danger'}`;
+        outputEntry.innerHTML = `
+            <div class="text-muted ps-3"><i class="fas fa-arrow-right"></i> <strong>Output:</strong></div>
+            <pre class="ps-4 mb-0 small">${output}</pre>
+        `;
+        logContainer.appendChild(outputEntry);
+    }
+    
+    // Add separator
+    const separator = document.createElement('hr');
+    separator.className = 'my-2 opacity-25';
+    logContainer.appendChild(separator);
+    
+    // Auto-scroll to bottom
+    logContainer.scrollTop = logContainer.scrollHeight;
+}
+
+function sendToPACS() {
+    const studyUID = window.currentStudyUID;
+    const selectedPACS = document.getElementById('pacsSelect').value;
+    
+    if (!studyUID) {
+        showAlert('danger', 'No study selected');
+        return;
+    }
+    
+    if (!selectedPACS) {
+        showAlert('danger', 'Please select a PACS configuration');
+        return;
+    }
+    
+    // Show loading
+    const sendBtn = document.getElementById('sendToPacsBtn');
+    const originalContent = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    sendBtn.disabled = true;
+    
+    // Add log entry for send start
+    const selectedPacsName = getSelectedPacsName();
+    addPacsLogEntry('info', `Starting DICOM C-STORE to ${selectedPacsName}`);
+    addPacsLogEntry('info', `Study UID: ${studyUID}`);
+    
+    // Find the study folder from the studies data
+    fetch('/api/dicom/studies')
+        .then(response => response.json())
+        .then(studies => {
+            const study = studies.find(s => s.study_uid === studyUID);
+            if (!study || !study.study_folder) {
+                throw new Error('Study folder not found');
+            }
+            
+            return fetch('/api/pacs/send-study', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    study_folder: study.study_folder,
+                    pacs_config_id: selectedPACS
+                })
+            });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Add success log entries
+                addPacsLogEntry('success', `C-STORE completed successfully - sent ${data.details.files_sent} file(s)`);
+                addPacsLogEntry('info', `Series count: ${data.details.series_count}`);
+                
+                // Add command details and output if available
+                if (data.command_log) {
+                    const cmdLog = data.command_log;
+                    addPacsLogEntry('info', `Command: ${cmdLog.command}`);
+                    addPacsLogEntry('info', `PACS: ${cmdLog.pacs_config.name} (${cmdLog.pacs_config.host}:${cmdLog.pacs_config.port})`);
+                    
+                    if (cmdLog.stdout && cmdLog.stdout.trim()) {
+                        addPacsCommandOutput('stdout', cmdLog.stdout);
+                    }
+                    if (cmdLog.stderr && cmdLog.stderr.trim()) {
+                        addPacsCommandOutput('stderr', cmdLog.stderr);
+                    }
+                    addPacsLogEntry('info', `Exit code: ${cmdLog.return_code}`);
+                }
+                
+                showAlert('success', `✅ Study sent to ${getSelectedPacsName()} successfully!\n\nFiles sent: ${data.details.files_sent}\nSeries: ${data.details.series_count}`);
+            } else {
+                addPacsLogEntry('error', `C-STORE failed: ${data.error}`);
+                
+                // Add command details and output for error case
+                if (data.command_log) {
+                    const cmdLog = data.command_log;
+                    addPacsLogEntry('info', `Command: ${cmdLog.command}`);
+                    addPacsLogEntry('info', `PACS: ${cmdLog.pacs_config.name} (${cmdLog.pacs_config.host}:${cmdLog.pacs_config.port})`);
+                    
+                    if (cmdLog.stdout && cmdLog.stdout.trim()) {
+                        addPacsCommandOutput('stdout', cmdLog.stdout);
+                    }
+                    if (cmdLog.stderr && cmdLog.stderr.trim()) {
+                        addPacsCommandOutput('stderr', cmdLog.stderr);
+                    }
+                    addPacsLogEntry('error', `Exit code: ${cmdLog.return_code}`);
+                }
+                
+                showAlert('danger', `❌ Failed to send to ${getSelectedPacsName()}: ${data.error}`);
+            }
+        })
+        .catch(error => {
+            addPacsLogEntry('error', `Network error during C-STORE: ${error.message}`);
+            showAlert('danger', `❌ Error: ${error.message}`);
+        })
+        .finally(() => {
+            sendBtn.innerHTML = originalContent;
+            sendBtn.disabled = false;
+        });
+}
+
+
+function queryPACS() {
+    const studyUID = window.currentStudyUID;
+    const selectedPACS = document.getElementById('pacsSelect').value;
+    
+    if (!studyUID) {
+        showAlert('danger', 'No study selected');
+        return;
+    }
+    
+    // Show loading
+    const queryBtn = document.getElementById('queryPacsBtn');
+    const originalContent = queryBtn.innerHTML;
+    queryBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Querying...';
+    queryBtn.disabled = true;
+    
+    // Add log entry for query start
+    const selectedPacsName = getSelectedPacsName();
+    addPacsLogEntry('info', `Starting DICOM C-FIND query on ${selectedPacsName}`);
+    addPacsLogEntry('info', `Searching for Study UID: ${studyUID}`);
+    
+    fetch('/api/pacs/query-study', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            study_uid: studyUID,
+            pacs_config_id: selectedPACS
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.exists) {
+                const info = data.study_info;
+                addPacsLogEntry('success', `C-FIND completed - study found on PACS`);
+                addPacsLogEntry('info', `Patient: ${info.patient_name || 'Unknown'}`);
+                addPacsLogEntry('info', `Series: ${info.series_count || '0'}, Images: ${info.instance_count || '0'}`);
+                
+                // Add command output if available
+                if (data.command_output) {
+                    addPacsCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
+                }
+                
+                // Show status note under query button
+                showQueryStatusNote(true, selectedPacsName);
+                
+                showAlert('info', 
+                    `✅ Study found on ${getSelectedPacsName()}!\n\n` +
+                    `Patient: ${info.patient_name || 'Unknown'}\n` +
+                    `Study Date: ${info.study_date || 'Unknown'}\n` +
+                    `Description: ${info.study_description || 'Unknown'}\n` +
+                    `Series: ${info.series_count || '0'}\n` +
+                    `Images: ${info.instance_count || '0'}`
+                );
+            } else {
+                addPacsLogEntry('warning', `C-FIND completed - study NOT found on PACS`);
+                if (data.command_output) {
+                    addPacsCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
+                }
+                
+                // Show status note under query button
+                showQueryStatusNote(false, selectedPacsName);
+            }
+        } else {
+            // Hide status note on query failure
+            document.getElementById('queryStatusNote').style.display = 'none';
+            showAlert('danger', `❌ Query failed: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        // Hide status note on network error
+        document.getElementById('queryStatusNote').style.display = 'none';
+        showAlert('danger', `❌ Error querying PACS: ${error.message}`);
+    })
+    .finally(() => {
+        queryBtn.innerHTML = originalContent;
+        queryBtn.disabled = false;
+    });
+}
+
+function getPacsConfig(pacsName) {
+    const configs = {
+        'TESTPACS': {
+            aet: 'DICOMFAB',
+            aec: 'TESTPACS',
+            host: 'localhost',
+            port: '4242'
+        },
+        'ORTHANC': {
+            aet: 'DICOMFAB',
+            aec: 'ORTHANC',
+            host: 'localhost',
+            port: '4242'
+        }
+    };
+    return configs[pacsName] || configs['TESTPACS'];
+}
+
+function showQueryStatusNote(found, pacsName) {
+    const statusNote = document.getElementById('queryStatusNote');
+    
+    if (found) {
+        statusNote.innerHTML = `
+            <div class="alert alert-success alert-sm py-2 mb-0" role="alert">
+                <i class="fas fa-check-circle"></i> Study UID found on <strong>${pacsName}</strong>
+            </div>
+        `;
+    } else {
+        statusNote.innerHTML = `
+            <div class="alert alert-warning alert-sm py-2 mb-0" role="alert">
+                <i class="fas fa-exclamation-triangle"></i> Study UID not found on <strong>${pacsName}</strong>
+            </div>
+        `;
+    }
+    
+    statusNote.style.display = 'block';
+}
+
+function viewSeries(seriesUID) {
+    // Placeholder for series viewing functionality
+    showAlert('info', `Series viewing not yet implemented for: ${seriesUID}`);
+}
+
+function showStudyDetails(studyUID) {
+    // Show loading in details modal
+    const detailsModal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    document.getElementById('detailsModalLabel').textContent = 'Study Details';
+    document.getElementById('detailsContainer').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading study details...</p>
+        </div>
+    `;
+    detailsModal.show();
+    
+    // Fetch study details from studies data
+    fetch('/api/dicom/studies')
+        .then(response => response.json())
+        .then(studies => {
+            const study = studies.find(s => s.study_uid === studyUID);
+            if (!study) {
+                throw new Error('Study not found');
+            }
+            
+            // Get all files from the study folder
+            let allFiles = [];
+            
+            // If we have a study_folder, fetch the actual files
+            if (study.study_folder) {
+                // We need to fetch the actual file list
+                fetch('/api/dicom/list')
+                    .then(response => response.json())
+                    .then(files => {
+                        // Filter files that belong to this study
+                        allFiles = files.filter(file => {
+                            // Filter by DICOM tags instead of just folder path
+                            // This ensures we get the right files for each study
+                            return file.accession_number === study.accession_number && 
+                                   file.study_instance_uid === study.study_uid;
+                        }).map(file => ({
+                            filename: file.filename,
+                            filepath: file.filepath,
+                            series_number: file.series_number || 'Unknown',
+                            series_description: file.series_description || 'Unknown'
+                        }));
+                        
+                        console.log(`Found ${allFiles.length} files for study ${study.accession_number} (UID: ${study.study_uid})`);
+                        
+                        // Now update the display with the files
+                        displayStudyDetailsWithFiles(study, allFiles);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching files:', error);
+                        // Display without files if fetch fails
+                        displayStudyDetailsWithFiles(study, []);
+                    });
+                return; // Exit early since we're handling async
+            } else {
+                // No study folder, just display study info without files
+                displayStudyDetailsWithFiles(study, []);
+            }
+        })
+        .catch(error => {
+            document.getElementById('detailsContainer').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle"></i> Error loading study details: ${error.message}
+                </div>
+            `;
+        });
+}
+
+function clearStudyDetails() {
+    document.getElementById('detailsContainer').innerHTML = `
+        <p class="text-muted">No study selected</p>
+    `;
+}
+
+function displayStudyDetailsWithFiles(study, allFiles) {
+    const totalSizeMB = (study.total_size / 1024 / 1024).toFixed(2);
+    const seriesCount = Object.keys(study.series).length;
+    
+    // Update modal title
+    document.getElementById('detailsModalLabel').textContent = `Study: ${study.patient_name || 'Unknown'} - ${study.accession_number || 'Unknown'}`;
+    
+    const resultsHtml = `
+        <div class="alert alert-info">
+            <i class="fas fa-eye"></i> Viewing Study Details
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <h6><i class="fas fa-folder"></i> Study Information:</h6>
+                <ul class="list-unstyled small">
+                    <li><strong>Study UID:</strong> <span class="font-monospace text-break" style="word-break: break-all;">${study.study_uid}</span></li>
+                    <li><strong>Patient:</strong> ${study.patient_name || 'Unknown'}</li>
+                    <li><strong>Patient ID:</strong> ${study.patient_id || 'Unknown'}</li>
+                    <li><strong>Study Date:</strong> ${study.study_date || 'Unknown'}</li>
+                    <li><strong>Accession:</strong> ${study.accession_number || 'Unknown'}</li>
+                    <li><strong>Description:</strong> ${study.study_description || 'Unknown'}</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="fas fa-chart-bar"></i> Study Summary:</h6>
+                <ul class="list-unstyled small">
+                    <li><strong>Series Count:</strong> ${seriesCount}</li>
+                    <li><strong>Total Images:</strong> ${study.total_files}</li>
+                    <li><strong>Total Size:</strong> ${totalSizeMB} MB</li>
+                    <li><strong>Created:</strong> ${study.created_iso ? new Date(study.created_iso).toLocaleString() : study.created || 'Unknown'}</li>
+                </ul>
+                <h6><i class="fas fa-layer-group"></i> Series Details:</h6>
+                <ul class="list-unstyled small">
+                    ${Object.values(study.series)
+                        .sort((a, b) => {
+                            const numA = parseInt(a.series_number) || 999999;
+                            const numB = parseInt(b.series_number) || 999999;
+                            return numA - numB;
+                        })
+                        .map(series => `
+                        <li><strong>Series ${series.series_number} [${series.modality || series.files?.[0]?.modality || 'DX'}]:</strong> ${series.series_description} (${series.files} image${series.files !== 1 ? 's' : ''})</li>
+                    `).join('')}
+                </ul>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-12">
+                <button class="btn btn-success btn-sm me-2" onclick="showPacsDialog('${study.study_uid}')"
+                        title="Send entire study to PACS server" data-bs-toggle="tooltip">
+                    <i class="fas fa-paper-plane"></i> Send or Query For Study on PACS
+                </button>
+                <button class="btn btn-info btn-sm me-2" onclick="clearStudyDetails()"
+                        title="Clear study details" data-bs-toggle="tooltip">
+                    <i class="fas fa-times"></i> Close Details
+                </button>
+                <small class="text-muted">Study contains ${seriesCount} series with ${study.total_files} total files</small>
+            </div>
+        </div>
+        ${allFiles.length > 0 ? `
+            <div class="row mb-3">
+                <div class="col-12">
+                    <h6><i class="fas fa-images"></i> Study Files (${allFiles.length} total):</h6>
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="seriesViewMode" id="seriesViewCollapsed" checked>
+                                <label class="btn btn-outline-primary btn-sm" for="seriesViewCollapsed">
+                                    <i class="fas fa-list"></i> Series View
+                                </label>
+                                <input type="radio" class="btn-check" name="seriesViewMode" id="seriesViewExpanded">
+                                <label class="btn btn-outline-primary btn-sm" for="seriesViewExpanded">
+                                    <i class="fas fa-th"></i> File Grid
+                                </label>
+                            </div>
+                            <div>
+                                <input type="text" class="form-control form-control-sm" id="fileSearchInput" 
+                                       placeholder="Search files..." style="width: 200px;">
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="seriesCollapsedView">
+                                <div class="accordion" id="seriesAccordion"></div>
+                            </div>
+                            <div id="fileGridView" style="display: none;">
+                                <div class="file-grid-container" style="max-height: 400px; overflow-y: auto;">
+                                    <div id="fileGrid" class="row g-2 p-3">
+                                        <!-- Files will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        ` : ''}
+    `;
+    document.getElementById('detailsContainer').innerHTML = resultsHtml;
+    
+    // Update modal footer with download button if we have files
+    const modalFooter = document.getElementById('detailsModalFooter');
+    if (allFiles.length > 0 && allFiles[0]) {
+        const firstFile = allFiles[0];
+        const filename = firstFile.filename || firstFile.filepath;
+        modalFooter.innerHTML = `
+            <a href="/api/dicom/download/${filename}" class="btn btn-primary">
+                <i class="fas fa-download"></i> Download DICOM Image File
+            </a>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        `;
+    } else {
+        modalFooter.innerHTML = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        `;
+    }
+    
+    // Store current files for filtering and pagination
+    currentStudyFiles = allFiles;
+    
+    // Initialize the new scalable files view if files exist
+    if (allFiles.length > 0) {
+        initializeStudyFilesView();
+        populateSeriesAccordion(allFiles, study.series);
+    }
+    
+    // Load detailed info only for visible files (first few in each series)
+    loadInitialFilePreviews(allFiles);
+    
+    // Initialize tooltips for new buttons
+    initializeTooltips();
+}
+
+// Global variable to store current study files
+let currentStudyFiles = [];
+
+function populateSeriesAccordion(allFiles, seriesData) {
+    // Group files by series
+    const filesBySeries = {};
+    allFiles.forEach(file => {
+        const seriesKey = file.series_number || 'unknown';
+        if (!filesBySeries[seriesKey]) {
+            filesBySeries[seriesKey] = [];
+        }
+        filesBySeries[seriesKey].push(file);
+    });
+    
+    // Sort files within each series by instance number
+    Object.keys(filesBySeries).forEach(seriesKey => {
+        filesBySeries[seriesKey].sort((a, b) => {
+            const instanceA = parseInt(a.instance_number) || 0;
+            const instanceB = parseInt(b.instance_number) || 0;
+            return instanceA - instanceB;
+        });
+    });
+    
+    // Sort series entries by series number (numeric sort)
+    const sortedSeriesEntries = Object.entries(filesBySeries).sort(([seriesA], [seriesB]) => {
+        // Handle numeric comparison properly
+        const numA = seriesA === 'unknown' ? 999999 : parseInt(seriesA) || 0;
+        const numB = seriesB === 'unknown' ? 999999 : parseInt(seriesB) || 0;
+        return numA - numB;
+    });
+    
+    const accordionHtml = sortedSeriesEntries.map(([seriesNumber, files], index) => {
+        const seriesInfo = seriesData[seriesNumber] || seriesData[`series_${seriesNumber}`] || {};
+        const seriesDesc = seriesInfo.series_description || `Series ${seriesNumber}`;
+        const isFirstSeries = index === 0;
+        
+        return `
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button ${isFirstSeries ? '' : 'collapsed'}" type="button" 
+                            data-bs-toggle="collapse" data-bs-target="#series-${seriesNumber}" 
+                            aria-expanded="${isFirstSeries}">
+                        <div class="d-flex align-items-center w-100">
+                            <i class="fas fa-layer-group me-2"></i>
+                            <strong>Series ${seriesNumber}:</strong> 
+                            <span class="ms-2">${seriesDesc}</span>
+                            <span class="badge bg-info ms-2">${seriesInfo.modality || 'DX'}</span>
+                            <span class="badge bg-secondary ms-auto">${files.length} files</span>
+                        </div>
+                    </button>
+                </h2>
+                <div id="series-${seriesNumber}" class="accordion-collapse collapse ${isFirstSeries ? 'show' : ''}">
+                    <div class="accordion-body p-2">
+                        <div class="row g-2" id="series-files-${seriesNumber}">
+                            ${generateSeriesFileCards(files.slice(0, 12))}
+                            ${files.length > 12 ? `
+                                <div class="col-12">
+                                    <button class="btn btn-outline-primary btn-sm w-100" 
+                                            onclick="loadMoreFiles('${seriesNumber}', ${files.length})">
+                                        <i class="fas fa-chevron-down"></i> Load More (${files.length - 12} remaining)
+                                    </button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    document.getElementById('seriesAccordion').innerHTML = accordionHtml;
+    
+    // Load previews for initially visible files in the first (expanded) series
+    const firstSeriesFiles = sortedSeriesEntries.length > 0 ? sortedSeriesEntries[0][1] : [];
+    const initialFilesToPreview = firstSeriesFiles.slice(0, 12);
+    
+    setTimeout(() => {
+        initialFilesToPreview.forEach(file => {
+            loadFilePreview(file.filepath || file.filename);
+        });
+    }, 100); // Small delay to ensure DOM elements are ready
+    
+    // Add event listeners for accordion expansion to load previews
+    sortedSeriesEntries.forEach(([seriesNumber, seriesFiles], index) => {
+        const accordionElement = document.getElementById(`series-${seriesNumber}`);
+        if (accordionElement) {
+            accordionElement.addEventListener('shown.bs.collapse', function() {
+                // Load previews for this series when expanded (already sorted)
+                const filesToPreview = seriesFiles.slice(0, 12);
+                setTimeout(() => {
+                    filesToPreview.forEach(file => {
+                        loadFilePreview(file.filepath || file.filename);
+                    });
+                }, 100);
+            });
+        }
+    });
+}
+
+function generateSeriesFileCards(files) {
+    return files.map(file => `
+        <div class="col-md-3 col-sm-4 col-6">
+            <div class="card file-card h-100" style="cursor: pointer;" 
+                 onclick="showFileDetails('${file.filepath || file.filename}')">
+                <div class="card-body p-2 text-center">
+                    <div class="file-preview mb-2" id="preview-${file.filepath ? file.filepath.replace(/[\/\\]/g, '_') : file.filename}" 
+                         style="height: 80px; background: #f8f9fa; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-file-medical text-muted"></i>
+                    </div>
+                    <small class="text-muted text-truncate d-block" title="${file.filename}">
+                        ${file.filename}
+                    </small>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function initializeStudyFilesView() {
+    const seriesViewRadio = document.getElementById('seriesViewCollapsed');
+    const gridViewRadio = document.getElementById('seriesViewExpanded');
+    const seriesView = document.getElementById('seriesCollapsedView');
+    const gridView = document.getElementById('fileGridView');
+    const fileSearchInput = document.getElementById('fileSearchInput');
+    
+    // Handle view mode switching
+    if (seriesViewRadio) {
+        seriesViewRadio.addEventListener('change', function() {
+            if (this.checked) {
+                seriesView.style.display = 'block';
+                gridView.style.display = 'none';
+            }
+        });
+    }
+    
+    if (gridViewRadio) {
+        gridViewRadio.addEventListener('change', function() {
+            if (this.checked) {
+                seriesView.style.display = 'none';
+                gridView.style.display = 'block';
+                populateFileGrid();
+            }
+        });
+    }
+    
+    // Handle file search
+    if (fileSearchInput) {
+        fileSearchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            filterFiles(searchTerm);
+        });
+    }
+}
+
+function populateFileGrid() {
+    const fileGrid = document.getElementById('fileGrid');
+    if (!fileGrid || !currentStudyFiles) return;
+    
+    // Use virtual scrolling for large datasets
+    const itemsPerPage = 50;
+    let currentPage = 0;
+    
+    function renderGridPage(page = 0) {
+        const startIndex = page * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, currentStudyFiles.length);
+        const pageFiles = currentStudyFiles.slice(startIndex, endIndex);
+        
+        const gridHtml = pageFiles.map(file => `
+            <div class="col-lg-2 col-md-3 col-sm-4 col-6 file-grid-item">
+                <div class="card file-card h-100" style="cursor: pointer;" 
+                     onclick="showFileDetails('${file.filepath || file.filename}')">
+                    <div class="card-body p-2 text-center">
+                        <div class="file-preview mb-2" id="grid-preview-${file.filepath ? file.filepath.replace(/[\/\\]/g, '_') : file.filename}" 
+                             style="height: 60px; background: #f8f9fa; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-file-medical text-muted"></i>
+                        </div>
+                        <small class="text-muted text-truncate d-block" title="${file.filename}">
+                            ${file.filename}
+                        </small>
+                        <small class="text-muted">S${file.series_number || '?'}</small>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        if (page === 0) {
+            fileGrid.innerHTML = gridHtml;
+        } else {
+            fileGrid.insertAdjacentHTML('beforeend', gridHtml);
+        }
+        
+        // Load previews for the rendered files
+        setTimeout(() => {
+            pageFiles.forEach(file => {
+                loadGridFilePreview(file.filepath || file.filename);
+            });
+        }, 100);
+        
+        // Add "Load More" button if there are more files
+        if (endIndex < currentStudyFiles.length) {
+            const loadMoreHtml = `
+                <div class="col-12 text-center" id="loadMoreContainer">
+                    <button class="btn btn-outline-primary" onclick="loadMoreGridFiles()">
+                        <i class="fas fa-chevron-down"></i> Load More (${currentStudyFiles.length - endIndex} remaining)
+                    </button>
+                </div>
+            `;
+            fileGrid.insertAdjacentHTML('beforeend', loadMoreHtml);
+        }
+    }
+    
+    renderGridPage(0);
+    currentPage = 0;
+    
+    // Store the render function for "Load More" functionality
+    window.loadMoreGridFiles = function() {
+        const loadMoreContainer = document.getElementById('loadMoreContainer');
+        if (loadMoreContainer) {
+            loadMoreContainer.remove();
+        }
+        currentPage++;
+        renderGridPage(currentPage);
+    };
+}
+
+function loadMoreFiles(seriesNumber, totalFiles) {
+    const seriesContainer = document.getElementById(`series-files-${seriesNumber}`);
+    const currentFiles = seriesContainer.querySelectorAll('.col-md-3').length;
+    const filesToLoad = Math.min(12, totalFiles - currentFiles);
+    
+    // Get the series files
+    const seriesFiles = currentStudyFiles.filter(f => f.series_number == seriesNumber);
+    const nextFiles = seriesFiles.slice(currentFiles, currentFiles + filesToLoad);
+    
+    // Remove the load more button
+    const loadMoreBtn = seriesContainer.querySelector('.btn-outline-primary');
+    if (loadMoreBtn) {
+        loadMoreBtn.parentElement.remove();
+    }
+    
+    // Add new files
+    seriesContainer.insertAdjacentHTML('beforeend', generateSeriesFileCards(nextFiles));
+    
+    // Add new load more button if needed
+    const remainingFiles = totalFiles - (currentFiles + filesToLoad);
+    if (remainingFiles > 0) {
+        const loadMoreHtml = `
+            <div class="col-12">
+                <button class="btn btn-outline-primary btn-sm w-100" 
+                        onclick="loadMoreFiles('${seriesNumber}', ${totalFiles})">
+                    <i class="fas fa-chevron-down"></i> Load More (${remainingFiles} remaining)
+                </button>
+            </div>
+        `;
+        seriesContainer.insertAdjacentHTML('beforeend', loadMoreHtml);
+    }
+    
+    // Load previews for new files with a small delay
+    setTimeout(() => {
+        nextFiles.forEach(file => {
+            const fileIdentifier = file.filepath || file.filename;
+            loadFilePreview(fileIdentifier);
+        });
+    }, 100);
+}
+
+let searchCache = new Map();
+
+function filterFiles(searchTerm) {
+    if (!currentStudyFiles) return;
+    
+    searchTerm = searchTerm.toLowerCase().trim();
+    
+    // Clear previous search highlighting
+    const fileCards = document.querySelectorAll('.file-grid-item, .file-card');
+    
+    if (!searchTerm) {
+        // Show all files if search is empty
+        fileCards.forEach(card => {
+            card.parentElement.style.display = 'block';
+            card.classList.remove('search-highlight');
+        });
+        updateSearchResultsCount('', 0);
+        return;
+    }
+    
+    // Search through currentStudyFiles with metadata
+    const matchingFiles = new Set();
+    
+    currentStudyFiles.forEach(file => {
+        const filename = (file.filename || '').toLowerCase();
+        const patientName = (file.patient_name || '').toLowerCase();
+        const patientId = (file.patient_id || '').toLowerCase();
+        const seriesDescription = (file.series_description || '').toLowerCase();
+        const studyDescription = (file.study_description || '').toLowerCase();
+        const modality = (file.modality || '').toLowerCase();
+        const studyDate = (file.study_date || '').toLowerCase();
+        
+        // Search in multiple fields
+        if (filename.includes(searchTerm) ||
+            patientName.includes(searchTerm) ||
+            patientId.includes(searchTerm) ||
+            seriesDescription.includes(searchTerm) ||
+            studyDescription.includes(searchTerm) ||
+            modality.includes(searchTerm) ||
+            studyDate.includes(searchTerm)) {
+            matchingFiles.add(file.filename);
+        }
+    });
+    
+    // Update display based on matches
+    fileCards.forEach(card => {
+        const filenameElement = card.querySelector('small[title]');
+        if (filenameElement) {
+            const filename = filenameElement.getAttribute('title');
+            if (matchingFiles.has(filename)) {
+                card.parentElement.style.display = 'block';
+                card.classList.add('search-highlight');
+            } else {
+                card.parentElement.style.display = 'none';
+                card.classList.remove('search-highlight');
+            }
+        }
+    });
+    
+    // Update search results count
+    updateSearchResultsCount(searchTerm, matchingFiles.size);
+}
+
+function updateSearchResultsCount(searchTerm, count) {
+    // Find or create search results indicator
+    let resultsIndicator = document.getElementById('searchResults');
+    if (!resultsIndicator) {
+        const searchInput = document.getElementById('fileSearchInput');
+        if (searchInput) {
+            resultsIndicator = document.createElement('small');
+            resultsIndicator.id = 'searchResults';
+            resultsIndicator.className = 'text-muted ms-2';
+            searchInput.parentElement.appendChild(resultsIndicator);
+        }
+    }
+    
+    if (resultsIndicator) {
+        if (searchTerm && count > 0) {
+            resultsIndicator.textContent = `${count} matches`;
+            resultsIndicator.style.color = '#28a745';
+        } else if (searchTerm && count === 0) {
+            resultsIndicator.textContent = 'No matches';
+            resultsIndicator.style.color = '#dc3545';
+        } else {
+            resultsIndicator.textContent = '';
+        }
+    }
+}
+
+let currentZoom = 1;
+let currentDicomImage = null;
+
+function showFileDetails(filename) {
+    // Show the DICOM image modal
+    const modal = new bootstrap.Modal(document.getElementById('dicomImageModal'));
+    
+    // Update modal title with proper formatting
+    document.getElementById('dicomImageModalLabel').innerHTML = `
+        <i class="fas fa-file-medical"></i> DICOM Image Info
+        <div class="text-muted small mt-1" style="word-break: break-all; line-height: 1.2;">${filename}</div>
+    `;
+    
+    // Reset zoom and clear previous content
+    currentZoom = 1;
+    currentDicomImage = null;
+    
+    // Reset containers to loading state
+    document.getElementById('dicomImageContainer').innerHTML = `
+        <div class="d-flex align-items-center justify-content-center" style="height: 400px;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading image...</span>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('dicomMetadataContainer').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border spinner-border-sm text-secondary" role="status">
+                <span class="visually-hidden">Loading metadata...</span>
+            </div>
+            <div class="mt-2">Loading metadata...</div>
+        </div>
+    `;
+    
+    // Set up download button
+    const downloadBtn = document.getElementById('downloadDicomBtn');
+    downloadBtn.href = `/api/dicom/download/${encodeURIComponent(filename)}`;
+    downloadBtn.download = filename;
+    
+    // Show modal
+    modal.show();
+    
+    // Load the DICOM data
+    loadDicomImageData(filename);
+}
+
+function loadDicomImageData(filename) {
+    fetch(`/api/dicom/view/${encodeURIComponent(filename)}`)
+        .then(response => response.json())
+        .then(data => {
+            // Handle image display
+            const imageData = data.image || data.base64_image;
+            if (imageData) {
+                const imgSrc = imageData.startsWith('data:') ? imageData : `data:image/png;base64,${imageData}`;
+                currentDicomImage = imgSrc;
+                
+                document.getElementById('dicomImageContainer').innerHTML = `
+                    <img id="dicomModalImage" src="${imgSrc}" 
+                         class="img-fluid" 
+                         style="max-width: 100%; height: auto; cursor: zoom-in; transform: scale(${currentZoom}); transition: transform 0.3s ease;" 
+                         alt="DICOM Image"
+                         onclick="zoomDicomImage('toggle')">
+                `;
+            } else {
+                document.getElementById('dicomImageContainer').innerHTML = `
+                    <div class="d-flex align-items-center justify-content-center" style="height: 400px;">
+                        <div class="text-center">
+                            <i class="fas fa-file-medical fa-4x text-muted mb-3"></i>
+                            <div class="text-muted">No image preview available</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Handle metadata display
+            if (data.metadata) {
+                displayDicomMetadata(data.metadata);
+            } else {
+                document.getElementById('dicomMetadataContainer').innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-info-circle"></i> No metadata available
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Failed to load DICOM data:', error);
+            document.getElementById('dicomImageContainer').innerHTML = `
+                <div class="d-flex align-items-center justify-content-center" style="height: 400px;">
+                    <div class="text-center text-danger">
+                        <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                        <div>Failed to load image</div>
+                        <small>${error.message}</small>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('dicomMetadataContainer').innerHTML = `
+                <div class="text-center py-4 text-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Failed to load metadata
+                </div>
+            `;
+        });
+}
+
+function getStandardDicomTag(tagName) {
+    // Common DICOM tags mapping
+    const standardTags = {
+        'PatientName': '(0010,0010)',
+        'PatientID': '(0010,0020)', 
+        'PatientBirthDate': '(0010,0030)',
+        'PatientSex': '(0010,0040)',
+        'StudyInstanceUID': '(0020,000D)',
+        'StudyDate': '(0008,0020)',
+        'StudyTime': '(0008,0030)',
+        'StudyDescription': '(0008,1030)',
+        'AccessionNumber': '(0008,0050)',
+        'SeriesInstanceUID': '(0020,000E)',
+        'SeriesNumber': '(0020,0011)',
+        'SeriesDescription': '(0008,103E)',
+        'Modality': '(0008,0060)',
+        'SOPInstanceUID': '(0008,0018)',
+        'InstanceNumber': '(0020,0013)',
+        'ImageType': '(0008,0008)',
+        'Rows': '(0028,0010)',
+        'Columns': '(0028,0011)',
+        'BitsAllocated': '(0028,0100)',
+        'BitsStored': '(0028,0101)',
+        'Manufacturer': '(0008,0070)',
+        'InstitutionName': '(0008,0080)',
+        'ReferringPhysicianName': '(0008,0090)',
+        'PixelSpacing': '(0028,0030)',
+        'WindowCenter': '(0028,1050)',
+        'WindowWidth': '(0028,1051)',
+        'RescaleIntercept': '(0028,1052)',
+        'RescaleSlope': '(0028,1053)',
+        'PhotometricInterpretation': '(0028,0004)',
+        'SamplesPerPixel': '(0028,0002)',
+        'PlanarConfiguration': '(0028,0006)',
+        'BitsPerSample': '(0028,0101)'
+    };
+    return standardTags[tagName];
+}
+
+function displayDicomMetadata(metadata) {
+    let metadataHtml = '';
+    
+    // Display all DICOM tags in alphabetical order for easy browsing
+    const allTags = Object.keys(metadata).sort();
+    const tagCount = allTags.length;
+    
+    metadataHtml += `
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="text-primary mb-0 border-bottom pb-1">
+                    <i class="fas fa-list"></i> All DICOM Tags
+                </h6>
+                <span class="badge bg-info">${tagCount} tags</span>
+            </div>
+            <div style="font-size: 0.75rem;">
+    `;
+    
+    allTags.forEach((tag, index) => {
+        const value = metadata[tag];
+        // Alternate background color for better readability
+        const bgClass = index % 2 === 0 ? 'bg-light' : '';
+        
+        // Get DICOM tag number if available (from backend)
+        const tagNumber = metadata[`${tag}_tag`] || getStandardDicomTag(tag) || '(Unknown)';
+        
+        metadataHtml += `
+            <div class="d-flex justify-content-between mb-1 p-1 rounded ${bgClass}">
+                <div class="text-nowrap me-2" style="min-width: 250px;">
+                    <code class="text-muted me-1">${tagNumber}</code>
+                    <strong>${formatTagName(tag)}:</strong>
+                </div>
+                <span class="text-end text-break font-monospace">${formatTagValue(value)}</span>
+            </div>
+        `;
+    });
+    
+    metadataHtml += `
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('dicomMetadataContainer').innerHTML = metadataHtml;
+}
+
+function formatTagName(tag) {
+    // Convert camelCase to readable format
+    return tag.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
+}
+
+function formatTagValue(value) {
+    if (value === null || value === undefined) return 'N/A';
+    if (typeof value === 'string' && value.length > 50) {
+        return value.substring(0, 47) + '...';
+    }
+    return String(value);
+}
+
+function zoomDicomImage(action) {
+    const image = document.getElementById('dicomModalImage');
+    if (!image) return;
+    
+    switch (action) {
+        case 'in':
+            currentZoom = Math.min(currentZoom * 1.25, 5);
+            break;
+        case 'out':
+            currentZoom = Math.max(currentZoom / 1.25, 0.25);
+            break;
+        case 'reset':
+            currentZoom = 1;
+            break;
+        case 'toggle':
+            currentZoom = currentZoom === 1 ? 2 : 1;
+            break;
+    }
+    
+    image.style.transform = `scale(${currentZoom})`;
+    image.style.cursor = currentZoom === 1 ? 'zoom-in' : 'zoom-out';
+}
+
+function copyDicomMetadata() {
+    const metadataContainer = document.getElementById('dicomMetadataContainer');
+    if (!metadataContainer) return;
+    
+    // Extract text content from the metadata container
+    const textContent = metadataContainer.innerText || metadataContainer.textContent || '';
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textContent).then(() => {
+            showAlert('success', 'DICOM metadata copied to clipboard');
+        }).catch(err => {
+            console.error('Failed to copy metadata:', err);
+            showAlert('danger', 'Failed to copy metadata to clipboard');
+        });
+    } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = textContent;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showAlert('success', 'DICOM metadata copied to clipboard');
+        } catch (err) {
+            console.error('Failed to copy metadata:', err);
+            showAlert('danger', 'Failed to copy metadata to clipboard');
+        }
+        document.body.removeChild(textArea);
+    }
+}
+
+function loadFilePreview(filename) {
+    // Load a thumbnail preview for the file in accordion view
+    const previewElement = document.getElementById(`preview-${filename.replace(/[\/\\]/g, '_')}`);
+    if (!previewElement) return;
+    
+    // Show loading spinner
+    previewElement.innerHTML = `<div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading...</span></div>`;
+    
+    // Load the actual preview async (encode filename for URL safety)
+    fetch(`/api/dicom/view/${encodeURIComponent(filename)}`)
+        .then(response => response.json())
+        .then(data => {
+            // Handle both 'image' and 'base64_image' response formats
+            const imageData = data.image || data.base64_image;
+            if (imageData) {
+                // If already a data URL, use as-is; otherwise create data URL
+                const imgSrc = imageData.startsWith('data:') ? imageData : `data:image/png;base64,${imageData}`;
+                previewElement.innerHTML = `<img src="${imgSrc}" 
+                                                  class="img-fluid" style="max-height: 100%; max-width: 100%; object-fit: contain;" 
+                                                  alt="DICOM Preview" loading="lazy">`;
+            } else {
+                previewElement.innerHTML = `<i class="fas fa-file-medical text-primary"></i>`;
+            }
+        })
+        .catch(error => {
+            console.warn('Failed to load preview for', filename, error);
+            previewElement.innerHTML = `<i class="fas fa-file-medical text-muted"></i>`;
+        });
+}
+
+function loadGridFilePreview(filename) {
+    // Load a thumbnail preview for the file in grid view
+    const previewElement = document.getElementById(`grid-preview-${filename.replace(/[\/\\]/g, '_')}`);
+    if (!previewElement) return;
+    
+    // Show loading spinner
+    previewElement.innerHTML = `<div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading...</span></div>`;
+    
+    // Load the actual preview async (encode filename for URL safety)
+    fetch(`/api/dicom/view/${encodeURIComponent(filename)}`)
+        .then(response => response.json())
+        .then(data => {
+            // Handle both 'image' and 'base64_image' response formats
+            const imageData = data.image || data.base64_image;
+            if (imageData) {
+                // If already a data URL, use as-is; otherwise create data URL
+                const imgSrc = imageData.startsWith('data:') ? imageData : `data:image/png;base64,${imageData}`;
+                previewElement.innerHTML = `<img src="${imgSrc}" 
+                                                  class="img-fluid" style="max-height: 100%; max-width: 100%; object-fit: contain;" 
+                                                  alt="DICOM Preview" loading="lazy">`;
+            } else {
+                previewElement.innerHTML = `<i class="fas fa-file-medical text-primary"></i>`;
+            }
+        })
+        .catch(error => {
+            console.warn('Failed to load grid preview for', filename, error);
+            previewElement.innerHTML = `<i class="fas fa-file-medical text-muted"></i>`;
+        });
+}
+
+function loadInitialFilePreviews(allFiles) {
+    // Only load previews for the first few files to avoid overwhelming the browser
+    const filesToPreview = allFiles.slice(0, 20); // Load first 20 file previews
+    
+    filesToPreview.forEach(file => {
+        const fileIdentifier = file.filepath || file.filename;
+        loadFilePreview(fileIdentifier);
+    });
+}
+
+function filterStudies() {
+    const searchTerm = document.getElementById('studySearchField').value.toLowerCase();
+    
+    if (!searchTerm) {
+        // Show all studies if search is empty
+        renderStudiesTable(allStudies);
+        return;
+    }
+    
+    // Filter studies based on search term
+    const filteredStudies = allStudies.filter(study => {
+        return (
+            (study.patient_name && study.patient_name.toLowerCase().includes(searchTerm)) ||
+            (study.patient_id && study.patient_id.toLowerCase().includes(searchTerm)) ||
+            (study.study_description && study.study_description.toLowerCase().includes(searchTerm)) ||
+            (study.study_date && study.study_date.toLowerCase().includes(searchTerm)) ||
+            (study.accession_number && study.accession_number.toLowerCase().includes(searchTerm)) ||
+            (study.study_uid && study.study_uid.toLowerCase().includes(searchTerm))
+        );
+    });
+    
+    renderStudiesTable(filteredStudies);
+}
+
+// Checkbox management functions
+function toggleAllStudies(selectAllCheckbox) {
+    const studyCheckboxes = document.querySelectorAll('.study-checkbox');
+    studyCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    updateDeleteButton();
+}
+
+function updateDeleteButton() {
+    const checkedBoxes = document.querySelectorAll('.study-checkbox:checked');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    if (checkedBoxes.length > 0) {
+        deleteBtn.disabled = false;
+        deleteBtn.title = `Delete ${checkedBoxes.length} selected study(ies)`;
+    } else {
+        deleteBtn.disabled = true;
+        deleteBtn.title = 'Delete selected studies';
+    }
+    
+    // Update select all checkbox state
+    const allCheckboxes = document.querySelectorAll('.study-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAllStudies');
+    if (selectAllCheckbox) {
+        if (checkedBoxes.length === 0) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = false;
+        } else if (checkedBoxes.length === allCheckboxes.length) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = true;
+        } else {
+            selectAllCheckbox.indeterminate = true;
+        }
+    }
+}
+
+function deleteSelectedStudies() {
+    const checkedBoxes = document.querySelectorAll('.study-checkbox:checked');
+    if (checkedBoxes.length === 0) {
+        showAlert('warning', 'No studies selected for deletion');
+        return;
+    }
+    
+    const studyUIDs = Array.from(checkedBoxes).map(cb => cb.value);
+    const studyCount = studyUIDs.length;
+    
+    if (confirm(`Are you sure you want to delete ${studyCount} study(ies)? This will permanently remove all files and folders associated with these studies.`)) {
+        // Show loading
+        const deleteBtn = document.getElementById('deleteSelectedBtn');
+        const originalText = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        deleteBtn.disabled = true;
+        
+        fetch('/api/dicom/studies/delete', {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({study_uids: studyUIDs})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', `Successfully deleted ${studyCount} study(ies)`);
+                // Reload the studies table
+                loadStudies();
+                // Reset checkboxes
+                const selectAllCheckbox = document.getElementById('selectAllStudies');
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = false;
+                }
+            } else {
+                showAlert('danger', `Error deleting studies: ${data.error}`);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', `Error deleting studies: ${error.message}`);
+        })
+        .finally(() => {
+            // Restore button
+            deleteBtn.innerHTML = originalText;
+            updateDeleteButton();
+        });
+    }
+}
+
+function loadDicomHeaders(filename) {
+    const headerId = `dicomHeaders-${filename.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const headerElement = document.getElementById(headerId);
+    
+    if (!headerElement) return;
+    
+    fetch(`/api/dicom/headers/${filename}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                headerElement.textContent = `Error loading headers: ${data.error}`;
+                return;
+            }
+            
+            // Format the headers in a readable way
+            let headerText = '';
+            if (data.headers) {
+                for (const [tag, info] of Object.entries(data.headers)) {
+                    const tagName = info.name || 'Unknown';
+                    const value = info.value || '';
+                    headerText += `(${tag}) ${tagName}: ${value}\n`;
+                }
+            }
+            
+            headerElement.textContent = headerText || 'No headers available';
+        })
+        .catch(error => {
+            headerElement.textContent = `Error loading DICOM headers: ${error.message}`;
+        });
+}
+
+function copyDicomHeaders(filename) {
+    const headerId = `dicomHeaders-${filename.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const headerElement = document.getElementById(headerId);
+    
+    if (!headerElement) return;
+    
+    const headerText = headerElement.textContent;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(headerText).then(() => {
+            showAlert('success', 'DICOM headers copied to clipboard');
+        }).catch(err => {
+            showAlert('danger', 'Failed to copy headers to clipboard');
+        });
+    } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = headerText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showAlert('success', 'DICOM headers copied to clipboard');
+        } catch (err) {
+            showAlert('danger', 'Failed to copy headers to clipboard');
+        }
+        document.body.removeChild(textArea);
+    }
+}
+
+// ORM HL7 parsing variables
+let parsedOrmData = null;
+
+function parseORM() {
+    const ormMessage = document.getElementById('ormMessage').value.trim();
+    
+    if (!ormMessage) {
+        alert('Please paste an ORM HL7 message first');
+        return;
+    }
+    
+    // Show loading state
+    const parseBtn = document.querySelector('button[onclick="parseORM()"]');
+    const originalContent = parseBtn.innerHTML;
+    parseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Parsing...';
+    parseBtn.disabled = true;
+    
+    // Send to backend for parsing
+    fetch('/api/parse-orm', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ orm_message: ormMessage })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('ORM Parse API response:', data);
+        if (data.success) {
+            console.log('Parsed ORM data:', data.parsed_data);
+            parsedOrmData = data.parsed_data;
+            console.log('parsedOrmData assigned:', parsedOrmData);
+            displayParsedORM(data.parsed_data);
+        } else {
+            alert(`Error parsing ORM: ${data.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Parse error:', error);
+        alert('Error parsing ORM message');
+    })
+    .finally(() => {
+        parseBtn.innerHTML = originalContent;
+        parseBtn.disabled = false;
+    });
+}
+
+function displayParsedORM(data) {
+    // Show the parsed data section
+    document.getElementById('parsedData').style.display = 'block';
+    
+    // Fill patient data
+    document.getElementById('ormPatientName').value = data.patient_name || '';
+    document.getElementById('ormPatientId').value = data.patient_id || '';
+    document.getElementById('ormBirthDate').value = data.birth_date || '';
+    document.getElementById('ormSex').value = data.sex || '';
+    
+    // Clear old single-study fields since we now handle multiple studies
+    document.getElementById('ormAccession').value = `${data.studies ? data.studies.length : 0} studies found`;
+    document.getElementById('ormStudyDate').value = '';
+    document.getElementById('ormStudyDesc').value = 'Multiple studies from ORM';
+    
+    // Display studies information (one study per OBR)
+    const seriesContainer = document.getElementById('ormSeriesContainer');
+    seriesContainer.innerHTML = '';
+    
+    if (data.studies && data.studies.length > 0) {
+        data.studies.forEach((study, studyIndex) => {
+            console.log(`Creating UI for study ${studyIndex}:`, study);
+            
+            // Ensure study has series array
+            if (!study.series || !Array.isArray(study.series)) {
+                console.warn(`Study ${studyIndex} missing series array, creating default:`, study);
+                study.series = [{
+                    images: 1,
+                    modality: study.modality || 'DX',
+                    series_description: study.procedure_name || 'Unknown Series',
+                    compression: 'uncompressed'
+                }];
+            }
+            
+            const studyDiv = document.createElement('div');
+            studyDiv.className = 'border rounded p-3 mb-3 bg-light';
+            studyDiv.innerHTML = `
+                <h6 class="text-primary mb-3">
+                    <i class="fas fa-clipboard-list"></i> Study ${studyIndex + 1}: ${study.procedure_name || 'Unknown Study'}
+                </h6>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Study Description</label>
+                        <input type="text" class="form-control" 
+                               value="${study.study_description || study.procedure_name || ''}" 
+                               onchange="updateOrmStudyDescription(${studyIndex}, this.value)"
+                               placeholder="Study description">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Accession Number <span class="text-muted">(OBR-3)</span></label>
+                        <input type="text" class="form-control" 
+                               value="${study.accession_number || ''}" 
+                               onchange="updateOrmStudyAccession(${studyIndex}, this.value)"
+                               placeholder="Study accession">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Study Date</label>
+                        <input type="text" class="form-control" 
+                               value="${study.study_date || ''}" 
+                               onchange="updateOrmStudyDate(${studyIndex}, this.value)"
+                               placeholder="YYYYMMDD">
+                    </div>
+                </div>
+                <div class="border rounded p-2 mb-2 bg-white">
+                    <h6 class="mb-2 text-secondary">Series Configuration</h6>
+                    <div id="studySeries${studyIndex}Container">
+                        ${study.series.map((series, seriesIndex) => `
+                            <div class="row mb-2">
+                                <div class="col-md-3">
+                                    <label class="form-label">Series ${seriesIndex + 1} Images</label>
+                                    <select class="form-select" onchange="updateOrmStudySeriesImages(${studyIndex}, ${seriesIndex}, this.value)">
+                                        ${[1,2,3,4,5,6,7,8,9,10].map(i => 
+                                            `<option value="${i}" ${i === (series.images || 1) ? 'selected' : ''}>${i}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Modality</label>
+                                    <select class="form-select" onchange="updateOrmStudySeriesModality(${studyIndex}, ${seriesIndex}, this.value)">
+                                        <option value="DX" ${(series.modality || 'DX') === 'DX' ? 'selected' : ''}>DX - Digital Radiography</option>
+                                        <option value="CT" ${(series.modality || 'DX') === 'CT' ? 'selected' : ''}>CT - Computed Tomography</option>
+                                        <option value="MR" ${(series.modality || 'DX') === 'MR' ? 'selected' : ''}>MR - Magnetic Resonance</option>
+                                        <option value="US" ${(series.modality || 'DX') === 'US' ? 'selected' : ''}>US - Ultrasound</option>
+                                        <option value="CR" ${(series.modality || 'DX') === 'CR' ? 'selected' : ''}>CR - Computed Radiography</option>
+                                        <option value="MG" ${(series.modality || 'DX') === 'MG' ? 'selected' : ''}>MG - Mammography</option>
+                                        <option value="NM" ${(series.modality || 'DX') === 'NM' ? 'selected' : ''}>NM - Nuclear Medicine</option>
+                                        <option value="PT" ${(series.modality || 'DX') === 'PT' ? 'selected' : ''}>PT - Positron Emission Tomography</option>
+                                        <option value="XA" ${(series.modality || 'DX') === 'XA' ? 'selected' : ''}>XA - X-Ray Angiography</option>
+                                        <option value="RF" ${(series.modality || 'DX') === 'RF' ? 'selected' : ''}>RF - Radio Fluoroscopy</option>
+                                        <option value="ES" ${(series.modality || 'DX') === 'ES' ? 'selected' : ''}>ES - Endoscopy</option>
+                                        <option value="OT" ${(series.modality || 'DX') === 'OT' ? 'selected' : ''}>OT - Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Series Description</label>
+                                    <input type="text" class="form-control" 
+                                           value="${series.series_description || study.procedure_name || ''}" 
+                                           onchange="updateOrmStudySeriesDescription(${studyIndex}, ${seriesIndex}, this.value)"
+                                           placeholder="Series description">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Compression</label>
+                                    <select class="form-select" onchange="updateOrmStudySeriesCompression(${studyIndex}, ${seriesIndex}, this.value)">
+                                        <option value="uncompressed" ${(series.compression || 'uncompressed') === 'uncompressed' ? 'selected' : ''}>Uncompressed</option>
+                                        <option value="jpeg_lossless" ${(series.compression || 'uncompressed') === 'jpeg_lossless' ? 'selected' : ''}>JPEG Lossless</option>
+                                        <option value="jpeg2000" ${(series.compression || 'uncompressed') === 'jpeg2000' ? 'selected' : ''}>JPEG2000</option>
+                                        <option value="rle" ${(series.compression || 'uncompressed') === 'rle' ? 'selected' : ''}>RLE</option>
+                                    </select>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addOrmStudySeries(${studyIndex})">
+                        <i class="fas fa-plus"></i> Add Series
+                    </button>
+                </div>
+            `;
+            seriesContainer.appendChild(studyDiv);
+        });
+    } else {
+        seriesContainer.innerHTML = '<div class="alert alert-warning">No studies found in ORM message</div>';
+    }
+}
+
+// New functions for study-based ORM data structure
+function updateOrmStudyDescription(studyIndex, value) {
+    if (parsedOrmData && parsedOrmData.studies && parsedOrmData.studies[studyIndex]) {
+        parsedOrmData.studies[studyIndex].study_description = value;
+    }
+}
+
+function updateOrmStudyAccession(studyIndex, value) {
+    if (parsedOrmData && parsedOrmData.studies && parsedOrmData.studies[studyIndex]) {
+        parsedOrmData.studies[studyIndex].accession_number = value;
+    }
+}
+
+function updateOrmStudyDate(studyIndex, value) {
+    if (parsedOrmData && parsedOrmData.studies && parsedOrmData.studies[studyIndex]) {
+        parsedOrmData.studies[studyIndex].study_date = value;
+    }
+}
+
+function updateOrmStudySeriesImages(studyIndex, seriesIndex, value) {
+    if (parsedOrmData && parsedOrmData.studies && parsedOrmData.studies[studyIndex] && 
+        parsedOrmData.studies[studyIndex].series && parsedOrmData.studies[studyIndex].series[seriesIndex]) {
+        parsedOrmData.studies[studyIndex].series[seriesIndex].images = parseInt(value);
+    }
+}
+
+function updateOrmStudySeriesModality(studyIndex, seriesIndex, value) {
+    if (parsedOrmData && parsedOrmData.studies && parsedOrmData.studies[studyIndex] && 
+        parsedOrmData.studies[studyIndex].series && parsedOrmData.studies[studyIndex].series[seriesIndex]) {
+        parsedOrmData.studies[studyIndex].series[seriesIndex].modality = value;
+    }
+}
+
+function updateOrmStudySeriesDescription(studyIndex, seriesIndex, value) {
+    if (parsedOrmData && parsedOrmData.studies && parsedOrmData.studies[studyIndex] && 
+        parsedOrmData.studies[studyIndex].series && parsedOrmData.studies[studyIndex].series[seriesIndex]) {
+        parsedOrmData.studies[studyIndex].series[seriesIndex].series_description = value;
+    }
+}
+
+function updateOrmStudySeriesCompression(studyIndex, seriesIndex, value) {
+    if (parsedOrmData && parsedOrmData.studies && parsedOrmData.studies[studyIndex] && 
+        parsedOrmData.studies[studyIndex].series && parsedOrmData.studies[studyIndex].series[seriesIndex]) {
+        parsedOrmData.studies[studyIndex].series[seriesIndex].compression = value;
+    }
+}
+
+function addOrmStudySeries(studyIndex) {
+    if (parsedOrmData && parsedOrmData.studies && parsedOrmData.studies[studyIndex]) {
+        const newSeries = {
+            images: 1,
+            modality: parsedOrmData.studies[studyIndex].modality || 'DX',
+            series_description: parsedOrmData.studies[studyIndex].procedure_name || 'New Series',
+            compression: 'uncompressed'
+        };
+        
+        parsedOrmData.studies[studyIndex].series.push(newSeries);
+        
+        // Refresh the display
+        displayParsedORM(parsedOrmData);
+    }
+}
+
+function clearORM() {
+    document.getElementById('ormMessage').value = '';
+    document.getElementById('parsedData').style.display = 'none';
+    parsedOrmData = null; // Clear the parsed data
+    console.log('ORM data cleared');
+    parsedOrmData = null;
+}
+
+// Update generateDICOM function to handle ORM data
+function generateDICOM() {
+    // Hide the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('generationModal'));
+    if (modal) modal.hide();
+    
+    // Check which tab is active
+    const activeTab = document.querySelector('#generationTabs .nav-link.active');
+    const isOrmTab = activeTab && activeTab.id === 'orm-tab';
+    
+    if (isOrmTab && parsedOrmData) {
+        // Generate from ORM data
+        generateFromORM();
+    } else {
+        // Generate from manual form (existing logic)
+        generateFromManualForm();
+    }
+}
+
+function generateFromORM() {
+    console.log('generateFromORM called, parsedOrmData:', parsedOrmData);
+    
+    if (!parsedOrmData) {
+        alert('No ORM data available. Please parse an ORM message first.');
+        return;
+    }
+    
+    if (!parsedOrmData.studies) {
+        console.error('parsedOrmData does not have studies array:', parsedOrmData);
+        alert('Invalid ORM data structure. Please re-parse the ORM message.');
+        return;
+    }
+    
+    if (parsedOrmData.studies.length === 0) {
+        alert('No studies found in ORM data.');
+        return;
+    }
+    
+    // Generate each study separately
+    let completedStudies = 0;
+    const totalStudies = parsedOrmData.studies.length;
+    const allResults = [];
+    
+    parsedOrmData.studies.forEach((study, index) => {
+        console.log(`Processing study ${index}:`, study);
+        console.log(`Study has series:`, study.series);
+        
+        if (!study.series || !Array.isArray(study.series)) {
+            console.error(`Study ${index} does not have valid series array:`, study.series);
+            alert(`Study ${index + 1} does not have valid series configuration. Please re-parse the ORM message.`);
+            return;
+        }
+        
+        const requestData = {
+            patient_name: parsedOrmData.patient_name,
+            patient_id: parsedOrmData.patient_id,
+            accession: study.accession_number,
+            study_desc: study.study_description,
+            study_date: study.study_date,
+            series: study.series.map(s => ({
+                procedure: study.procedure_code || 'UNKNOWN',
+                modality: s.modality || study.modality || 'DX',
+                series_description: s.series_description || study.procedure_name || 'Unknown Series',
+                images: s.images || 1,
+                compression: s.compression || 'uncompressed'
+            })),
+            source: 'orm'
+        };
+        
+        // Generate this study
+        fetch('/api/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(result => {
+            completedStudies++;
+            if (result.success) {
+                allResults.push(result.study);
+                console.log(`Study ${index + 1}/${totalStudies} generated successfully`);
+            } else {
+                console.error(`Study ${index + 1}/${totalStudies} generation failed:`, result.error);
+                alert(`Study ${index + 1} generation failed: ${result.error}`);
+            }
+            
+            // If all studies are complete, refresh the studies list and show results
+            if (completedStudies === totalStudies) {
+                loadStudies();
+                alert(`Generated ${allResults.length}/${totalStudies} studies successfully from ORM data!`);
+                
+                // Show the first successful study result if available
+                if (allResults.length > 0) {
+                    const firstStudy = allResults[0];
+                    
+                    // Extract all files from series for display
+                    const allFiles = [];
+                    if (firstStudy && firstStudy.series) {
+                        firstStudy.series.forEach(series => {
+                            if (series.files) {
+                                allFiles.push(...series.files);
+                            }
+                        });
+                    }
+                    
+                    // Convert array series structure to object structure expected by displayStudyDetailsWithFiles
+                    const studyForDisplay = {
+                        ...firstStudy,
+                        series: {}
+                    };
+                    
+                    if (firstStudy.series) {
+                        firstStudy.series.forEach(series => {
+                            const seriesKey = `series_${series.series_number}`;
+                            studyForDisplay.series[seriesKey] = series;
+                        });
+                    }
+                    
+                    // Use the same display function as manual generation
+                    displayStudyDetailsWithFiles(studyForDisplay, allFiles);
+                }
+            }
+        })
+        .catch(error => {
+            completedStudies++;
+            console.error(`Study ${index + 1}/${totalStudies} generation error:`, error);
+            alert(`Study ${index + 1} generation error: ${error.message}`);
+            
+            if (completedStudies === totalStudies) {
+                loadStudies();
+            }
+        });
+    });
+}
+
+function generateFromManualForm() {
+    // Collect series configuration (existing logic)
+    const seriesCount = parseInt(document.getElementById('seriesCount').value);
+    const series = [];
+    
+    for (let i = 1; i <= seriesCount; i++) {
+        const procedure = document.getElementById(`series${i}Procedure`).value || 'PA-VIEW';
+        const modality = document.getElementById(`series${i}Modality`).value || 'DX';
+        const images = parseInt(document.getElementById(`series${i}Images`).value) || 1;
+        const compression = document.getElementById(`series${i}Compression`).value || 'uncompressed';
+        series.push({ procedure, modality, images, compression });
+    }
+    
+    const requestData = {
+        patient_name: document.getElementById('patientName').value,
+        patient_id: document.getElementById('selectedPatientId').value || document.getElementById('patientId').value,
+        accession: document.getElementById('accession').value,
+        study_desc: document.getElementById('studyDesc').value,
+        series: series,
+        source: 'manual'
+    };
+    
+    generateStudy(requestData);
+}
+
+function generateStudy(requestData) {
+    // Show loading in details modal
+    const detailsModal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    document.getElementById('detailsContainer').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Generating...</span>
+            </div>
+            <div class="mt-2">Generating DICOM study...</div>
+        </div>
+    `;
+    detailsModal.show();
+    
+    // Call the generation API
+    fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success alert first
+            showAlert('success', `✅ ${data.message}`);
+            
+            // Extract all files from series for display
+            const allFiles = [];
+            if (data.study && data.study.series) {
+                data.study.series.forEach(series => {
+                    if (series.files) {
+                        allFiles.push(...series.files);
+                    }
+                });
+            }
+            
+            // Convert array series structure to object structure expected by displayStudyDetailsWithFiles
+            const studyForDisplay = {
+                ...data.study,
+                series: {}
+            };
+            
+            if (data.study.series) {
+                data.study.series.forEach(series => {
+                    const seriesKey = `series_${series.series_number}`;
+                    studyForDisplay.series[seriesKey] = series;
+                });
+            }
+            
+            // Use the same display function as table row clicks
+            displayStudyDetailsWithFiles(studyForDisplay, allFiles);
+            loadStudies(); // Refresh the studies table
+        } else {
+            document.getElementById('detailsContainer').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Generation Failed</strong><br>
+                    ${data.error}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Generation error:', error);
+        document.getElementById('detailsContainer').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Network Error</strong><br>
+                Failed to generate DICOM study.
+            </div>
+        `;
+    });
+}
+</script>
+
+<!-- PACS Dialog Modal -->
+<div class="modal fade" id="pacsModal" tabindex="-1" aria-labelledby="pacsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pacsModalLabel">
+          <i class="fas fa-paper-plane"></i> Study Operations
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" 
+                data-bs-toggle="tooltip" title="Close PACS dialog"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6">
+            <label for="pacsSelect" class="form-label">Select PACS/AE:</label>
+            <select id="pacsSelect" class="form-select">
+              <option value="">Loading PACS configurations...</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Study UID:</label>
+            <div class="form-control-plaintext small text-muted font-monospace text-break" id="studyUIDDisplay" style="word-break: break-all;">
+              <!-- Will be populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+        
+        <div class="row mt-4">
+          <div class="col-md-6">
+            <div class="d-grid mb-3">
+              <button type="button" class="btn btn-success" id="sendToPacsBtn" onclick="sendToPACS()">
+                <i class="fas fa-paper-plane"></i> Send or Query For Study on PACS
+              </button>
+            </div>
+            <p class="text-muted small">Send the entire study (all series) to the selected PACS server.</p>
+            
+            <div class="d-grid mt-3">
+              <button type="button" class="btn btn-info" id="queryPacsBtn" onclick="queryPACS()">
+                <i class="fas fa-search"></i> Query Study on PACS
+              </button>
+            </div>
+            <div id="queryStatusNote" class="mt-2" style="display: none;">
+              <!-- Status note will be inserted here -->
+            </div>
+            <p class="text-muted small">Check if this study already exists on the selected PACS server.</p>
+          </div>
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-terminal"></i> DICOM Command Log</h6>
+                <button class="btn btn-outline-secondary btn-sm" onclick="clearPacsLog()" 
+                        title="Clear log" data-bs-toggle="tooltip">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+              <div class="card-body p-2" style="height: 300px; overflow-y: auto;">
+                <div id="pacsCommandLog" class="font-monospace small text-muted">
+                  <div class="text-center py-4">
+                    <i class="fas fa-terminal fa-2x mb-2 opacity-50"></i>
+                    <div>DICOM command output will appear here</div>
+                    <small class="text-muted">Send or query to see command logs</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DICOM Image Modal -->
+<div class="modal fade" id="dicomImageModal" tabindex="-1" aria-labelledby="dicomImageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl" style="max-width: 95vw;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="dicomImageModalLabel">
+          <i class="fas fa-file-medical"></i> DICOM Image Details
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-8">
+            <div class="text-center mb-3">
+              <div id="dicomImageContainer" style="max-height: 500px; overflow: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; background: #f8f9fa;">
+                <div class="d-flex align-items-center justify-content-center" style="height: 400px;">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading image...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="d-flex justify-content-center gap-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="zoomDicomImage('in')">
+                <i class="fas fa-search-plus"></i> Zoom In
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="zoomDicomImage('out')">
+                <i class="fas fa-search-minus"></i> Zoom Out
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="zoomDicomImage('reset')">
+                <i class="fas fa-expand-arrows-alt"></i> Reset
+              </button>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <h6><i class="fas fa-tags"></i> DICOM Metadata</h6>
+            <div id="dicomMetadataContainer" style="max-height: 550px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem; background: #f8f9fa;">
+              <div class="text-center py-4">
+                <div class="spinner-border spinner-border-sm text-secondary" role="status">
+                  <span class="visually-hidden">Loading metadata...</span>
+                </div>
+                <div class="mt-2">Loading metadata...</div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="copyDicomMetadata()">
+                <i class="fas fa-copy"></i> Copy Metadata
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a id="downloadDicomBtn" href="#" class="btn btn-success" download>
+          <i class="fas fa-download"></i> Download DICOM File
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

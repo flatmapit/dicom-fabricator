@@ -1,0 +1,586 @@
+{% extends "base.html" %}
+
+{% block title %}DICOM Fabricator - Viewer{% endblock %}
+
+{% block head %}
+<style>
+.tree-item {
+    font-size: 0.9rem;
+    user-select: none;
+}
+
+.tree-node {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border-radius: 4px;
+}
+
+.tree-node:hover {
+    background-color: #f8f9fa;
+}
+
+.tree-selectable:hover {
+    background-color: #e3f2fd !important;
+}
+
+.tree-node.active {
+    background-color: #0d6efd !important;
+    color: white !important;
+}
+
+.tree-toggle {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.tree-children {
+    border-left: 1px solid #dee2e6;
+    margin-left: 10px;
+    padding-left: 5px;
+}
+
+.tree-item.study {
+    margin-bottom: 5px;
+}
+
+.tree-item.series {
+    margin-bottom: 2px;
+}
+
+.tree-item.image {
+    margin-bottom: 1px;
+}
+
+#filesTree {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.tree-node i {
+    flex-shrink: 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-eye"></i> DICOM Viewer</h2>
+        <div class="row">
+            <div class="col-md-8">
+                <p class="text-muted mb-0">Browse DICOM studies organized by patient, series, and images</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div id="viewerStats" class="small text-muted">
+                    <span id="statsLoading" class="spinner-border spinner-border-sm" role="status"></span>
+                </div>
+            </div>
+        </div>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-folder-tree"></i> Studies Tree
+                </h5>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button id="expandAllBtn" class="btn btn-outline-primary btn-sm" onclick="toggleAllNodes(true)" title="Expand All">
+                        <i class="fas fa-expand-alt"></i>
+                    </button>
+                    <button id="collapseAllBtn" class="btn btn-outline-primary btn-sm" onclick="toggleAllNodes(false)" title="Collapse All">
+                        <i class="fas fa-compress-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-2">
+                <!-- Search Bar -->
+                <div class="mb-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" id="treeSearch" class="form-control" placeholder="Search studies, series, images...">
+                        <button class="btn btn-outline-secondary" type="button" onclick="clearTreeSearch()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tree Container -->
+                <div id="filesTree" style="max-height: 550px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 0.5rem;">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="mt-2">Loading studies...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>DICOM Details</h5>
+            </div>
+            <div class="card-body">
+                <div id="viewerContent">
+                    <p class="text-muted">Select a file to view</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentFile = null;
+let treeData = null;
+let filteredTreeData = null;
+let currentSearchTerm = '';
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadStudiesTree();
+    
+    // Check if file parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const file = urlParams.get('file');
+    if (file) {
+        viewFile(file);
+    }
+    
+    // Setup search functionality
+    setupTreeSearch();
+});
+
+function loadStudiesTree() {
+    fetch('/api/dicom/tree')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                treeData = data.tree;
+                filteredTreeData = treeData;
+                renderTree();
+                updateStats(data.stats);
+            } else {
+                showTreeError('Failed to load studies tree');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading tree:', error);
+            showTreeError('Error loading studies tree');
+        });
+}
+
+function updateStats(stats) {
+    const statsContainer = document.getElementById('viewerStats');
+    statsContainer.innerHTML = `
+        <i class="fas fa-chart-bar"></i> 
+        ${stats.total_studies} studies, ${stats.total_series} series, ${stats.total_images} images
+        ${stats.error_files > 0 ? `<span class="text-warning">(${stats.error_files} errors)</span>` : ''}
+    `;
+}
+
+function showTreeError(message) {
+    const container = document.getElementById('filesTree');
+    container.innerHTML = `
+        <div class="text-center py-4 text-danger">
+            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+            <div>${message}</div>
+        </div>
+    `;
+}
+
+function renderTree() {
+    const container = document.getElementById('filesTree');
+    
+    if (!filteredTreeData || filteredTreeData.length === 0) {
+        if (currentSearchTerm) {
+            container.innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-search fa-2x mb-2"></i>
+                    <div>No results found for "${currentSearchTerm}"</div>
+                    <small>Try a different search term</small>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="fas fa-folder-open fa-2x mb-2"></i>
+                    <div>No DICOM files found</div>
+                </div>
+            `;
+        }
+        return;
+    }
+    
+    const treeHtml = renderTreeNodes(filteredTreeData);
+    container.innerHTML = treeHtml;
+}
+
+function renderTreeNodes(nodes, level = 0) {
+    return nodes.map(node => {
+        const hasChildren = node.children && node.children.length > 0;
+        const isExpanded = node.expanded !== false; // Default to expanded
+        const indent = level * 20;
+        
+        let icon, extraInfo = '';
+        switch(node.type) {
+            case 'study':
+                icon = 'fa-user-md';
+                extraInfo = `<small class="text-muted ms-2">${node.data.study_date} - ${node.data.modality}</small>`;
+                break;
+            case 'series':
+                icon = 'fa-layer-group';
+                extraInfo = `<small class="text-muted ms-2">${Object.keys(node.data.images || {}).length} images</small>`;
+                break;
+            case 'image':
+                icon = 'fa-file-medical';
+                extraInfo = `<small class="text-muted ms-2">${(node.data.size / 1024).toFixed(1)} KB</small>`;
+                break;
+            default:
+                icon = 'fa-question';
+        }
+        
+        let html = `
+            <div class="tree-item ${node.type}" style="margin-left: ${indent}px;">
+                <div class="tree-node d-flex align-items-center py-1 px-2 rounded ${node.type === 'image' ? 'tree-selectable' : ''}" 
+                     data-id="${node.id}" 
+                     data-type="${node.type}"
+                     onclick="handleTreeClick(this, '${node.id}', '${node.type}')"
+                     ${node.type === 'image' ? `data-filename="${node.data.filename}"` : ''}>
+                    ${hasChildren ? 
+                        `<i class="fas fa-chevron-${isExpanded ? 'down' : 'right'} me-2 tree-toggle" style="width: 12px;"></i>` :
+                        '<span style="width: 16px;"></span>'
+                    }
+                    <i class="fas ${icon} me-2 text-${node.type === 'study' ? 'primary' : node.type === 'series' ? 'info' : 'secondary'}"></i>
+                    <span class="flex-grow-1">${node.label}</span>
+                    ${extraInfo}
+                </div>
+                ${hasChildren && isExpanded ? 
+                    `<div class="tree-children">${renderTreeNodes(node.children, level + 1)}</div>` : 
+                    ''
+                }
+            </div>
+        `;
+        
+        return html;
+    }).join('');
+}
+
+function handleTreeClick(element, id, type) {
+    // Remove previous selections
+    document.querySelectorAll('.tree-node').forEach(node => {
+        node.classList.remove('active', 'bg-primary', 'text-white');
+    });
+    
+    if (type === 'image') {
+        // Select image and load its details
+        element.classList.add('active', 'bg-primary', 'text-white');
+        const filename = element.getAttribute('data-filename');
+        viewFile(filename);
+    } else {
+        // Toggle expansion for studies/series
+        const treeItem = element.closest('.tree-item');
+        const childrenDiv = treeItem.querySelector('.tree-children');
+        const toggleIcon = element.querySelector('.tree-toggle');
+        
+        if (childrenDiv && toggleIcon) {
+            const isExpanded = childrenDiv.style.display !== 'none';
+            childrenDiv.style.display = isExpanded ? 'none' : 'block';
+            toggleIcon.className = `fas fa-chevron-${isExpanded ? 'right' : 'down'} me-2 tree-toggle`;
+        }
+    }
+}
+
+function toggleAllNodes(expand) {
+    const childrenDivs = document.querySelectorAll('.tree-children');
+    const toggleIcons = document.querySelectorAll('.tree-toggle');
+    
+    childrenDivs.forEach(div => {
+        div.style.display = expand ? 'block' : 'none';
+    });
+    
+    toggleIcons.forEach(icon => {
+        icon.className = `fas fa-chevron-${expand ? 'down' : 'right'} me-2 tree-toggle`;
+    });
+}
+
+function setupTreeSearch() {
+    const searchInput = document.getElementById('treeSearch');
+    searchInput.addEventListener('input', function() {
+        currentSearchTerm = this.value.toLowerCase().trim();
+        filterTree();
+    });
+    
+    // Enter key to search
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            filterTree();
+        }
+    });
+}
+
+function filterTree() {
+    if (!treeData) return;
+    
+    if (!currentSearchTerm) {
+        filteredTreeData = treeData;
+    } else {
+        filteredTreeData = treeData.filter(study => {
+            // Check if study matches
+            if (study.data.searchable && study.data.searchable.includes(currentSearchTerm)) {
+                return true;
+            }
+            
+            // Check if any series matches
+            const matchingSeries = study.children.filter(series => {
+                if (series.data.searchable && series.data.searchable.includes(currentSearchTerm)) {
+                    return true;
+                }
+                
+                // Check if any images match
+                return series.children.some(image => 
+                    image.data.searchable && image.data.searchable.includes(currentSearchTerm)
+                );
+            });
+            
+            if (matchingSeries.length > 0) {
+                // Create filtered study with matching series
+                const filteredStudy = {...study, children: matchingSeries};
+                return true;
+            }
+            
+            return false;
+        }).map(study => {
+            // Ensure all matching nodes are expanded
+            const expandedStudy = {...study, expanded: true};
+            expandedStudy.children = expandedStudy.children.map(series => ({
+                ...series, 
+                expanded: true
+            }));
+            return expandedStudy;
+        });
+    }
+    
+    renderTree();
+}
+
+function clearTreeSearch() {
+    document.getElementById('treeSearch').value = '';
+    currentSearchTerm = '';
+    filterTree();
+}
+
+function viewFile(filename) {
+    currentFile = filename;
+    
+    // Update active state in list
+    document.querySelectorAll('#filesList .list-group-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.onclick && item.onclick.toString().includes(filename)) {
+            item.classList.add('active');
+        }
+    });
+    
+    // Show loading
+    document.getElementById('viewerContent').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+    
+    fetch(`/api/dicom/view/${filename}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('viewerContent').innerHTML = `
+                    <div class="alert alert-danger">Error: ${data.error}</div>
+                `;
+                return;
+            }
+            
+            const metadata = data.metadata;
+            const viewerHtml = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Image</h5>
+                        ${data.image ? 
+                            `<img src="${data.image}" class="img-fluid border" alt="DICOM Image">` :
+                            '<p class="text-muted">No image data available</p>'
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Metadata</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th>Patient Name: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0010,0010)"></i></th>
+                                        <td>${metadata.PatientName}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Patient ID: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0010,0020)"></i></th>
+                                        <td>${metadata.PatientID}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Birth Date: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0010,0030)"></i></th>
+                                        <td>${metadata.PatientBirthDate}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Sex: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0010,0040)"></i></th>
+                                        <td>${metadata.PatientSex}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Study Date: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,0020)"></i></th>
+                                        <td>${metadata.StudyDate}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Study Time: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,0030)"></i></th>
+                                        <td>${metadata.StudyTime}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Study Description: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,1030)"></i></th>
+                                        <td>${metadata.StudyDescription}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Series Description: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,103E)"></i></th>
+                                        <td>${metadata.SeriesDescription || 'N/A'}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Accession Number: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,0050)"></i></th>
+                                        <td>${metadata.AccessionNumber}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Modality: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,0060)"></i></th>
+                                        <td>${metadata.Modality}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Institution: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,0080)"></i></th>
+                                        <td>${metadata.InstitutionName}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Manufacturer: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,0070)"></i></th>
+                                        <td>${metadata.Manufacturer}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <h6 class="mt-3">UIDs</h6>
+                        <div class="small">
+                            <p>
+                                <strong>Study UID: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0020,000D)"></i></strong>
+                                <br><code class="text-break">${metadata.StudyInstanceUID}</code>
+                            </p>
+                            <p>
+                                <strong>Series UID: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0020,000E)"></i></strong>
+                                <br><code class="text-break">${metadata.SeriesInstanceUID}</code>
+                            </p>
+                            <p>
+                                <strong>SOP UID: <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" title="DICOM Tag (0008,0018)"></i></strong>
+                                <br><code class="text-break">${metadata.SOPInstanceUID}</code>
+                            </p>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button class="btn btn-success" onclick="launchDicomViewer('${filename}')"
+                                    title="Launch external DICOM viewer (OsiriX, Horos, etc.)" data-bs-toggle="tooltip">
+                                <i class="fas fa-external-link-alt"></i> Launch Viewer
+                            </button>
+                            <a href="/api/dicom/download/${filename}" class="btn btn-primary"
+                               title="Download this DICOM file to your computer" data-bs-toggle="tooltip">
+                                <i class="fas fa-download"></i> Download
+                            </a>
+                            <button class="btn btn-danger" onclick="deleteFile('${filename}')"
+                                    title="Permanently delete this DICOM file" data-bs-toggle="tooltip">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('viewerContent').innerHTML = viewerHtml;
+            
+            // Initialize tooltips for the newly added buttons
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        })
+        .catch(error => {
+            document.getElementById('viewerContent').innerHTML = `
+                <div class="alert alert-danger">Error loading file details</div>
+            `;
+        });
+}
+
+function launchDicomViewer(filename) {
+    // Show loading indicator
+    const event = window.event;
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    fetch(`/api/dicom/launch/${filename}`, {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                showAlert('success', data.message);
+            } else {
+                // Show error with suggestion if available
+                const message = data.suggestion ? 
+                    `${data.error}\n\nSuggestion: ${data.suggestion}` : 
+                    data.error;
+                showAlert('warning', message);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Error launching DICOM viewer: ' + error.message);
+        })
+        .finally(() => {
+            // Restore button
+            button.innerHTML = originalContent;
+            button.disabled = false;
+        });
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        ${message.replace(/\n/g, '<br>')}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+function deleteFile(filename) {
+    if (!confirm(`Delete ${filename}?`)) return;
+    
+    fetch(`/api/dicom/delete/${filename}`, {method: 'DELETE'})
+        .then(response => response.json())
+        .then(data => {
+            currentFile = null;
+            loadFilesList();
+            document.getElementById('viewerContent').innerHTML = 
+                '<p class="text-muted">Select a file to view</p>';
+        });
+}
+</script>
+{% endblock %}

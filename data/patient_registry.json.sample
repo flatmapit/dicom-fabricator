@@ -1,0 +1,24 @@
+{
+  "SAMPLE001": {
+    "patient_id": "SAMPLE001", 
+    "patient_name": "DEMO^PATIENT",
+    "birth_date": "19900101",
+    "sex": "M",
+    "address": "123 Sample Street, Demo City, DC 12345",
+    "phone": "555-123-4567",
+    "created_date": "2025-01-01T00:00:00.000000",
+    "last_used": "2025-01-01T00:00:00.000000",
+    "study_count": 1
+  },
+  "TEST002": {
+    "patient_id": "TEST002",
+    "patient_name": "EXAMPLE^JANE", 
+    "birth_date": "19851201",
+    "sex": "F",
+    "address": "456 Test Avenue, Example Town, ET 67890",
+    "phone": "555-987-6543",
+    "created_date": "2025-01-01T00:00:00.000000",
+    "last_used": "2025-01-01T00:00:00.000000", 
+    "study_count": 2
+  }
+}

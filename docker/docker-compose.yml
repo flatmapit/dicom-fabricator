@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  orthanc:
+    image: jodogne/orthanc-plugins:latest
+    container_name: orthanc-test-pacs
+    restart: unless-stopped
+    ports:
+      - "4242:4242"  # DICOM port
+      - "8042:8042"  # HTTP/REST API port
+    volumes:
+      - ./orthanc-data:/var/lib/orthanc/db:Z
+      - ./orthanc-config.json:/etc/orthanc/orthanc.json:ro
+    environment:
+      - ORTHANC__NAME=TestPACS
+      - ORTHANC__DICOM_AET=TESTPACS
+      - ORTHANC__DICOM_CHECK_CALLED_AET=false
+      - ORTHANC__DICOM_ALWAYS_ALLOW_ECHO=true
+      - ORTHANC__DICOM_ALWAYS_ALLOW_STORE=true
+      - 'ORTHANC__REGISTERED_USERS={"test": "test123"}'
+      - ORTHANC__AUTHENTICATION_ENABLED=true
+      - 'ORTHANC__DICOM_MODALITIES={"DICOMFAB": ["DICOMFAB", "localhost", 11112]}'
+
+  orthanc2:
+    image: jodogne/orthanc-plugins:latest
+    container_name: orthanc-test-pacs-2
+    restart: unless-stopped
+    ports:
+      - "4243:4242"  # DICOM port (different external port)
+      - "8043:8042"  # HTTP/REST API port (different external port)
+    volumes:
+      - ./orthanc-data-2:/var/lib/orthanc/db:Z
+      - ./orthanc-config-2.json:/etc/orthanc/orthanc.json:ro
+    environment:
+      - ORTHANC__NAME=TestPACS2
+      - ORTHANC__DICOM_AET=TESTPACS2
+      - ORTHANC__DICOM_CHECK_CALLED_AET=false
+      - ORTHANC__DICOM_ALWAYS_ALLOW_ECHO=true
+      - ORTHANC__DICOM_ALWAYS_ALLOW_STORE=true
+      - 'ORTHANC__REGISTERED_USERS={"test2": "test456"}'
+      - ORTHANC__AUTHENTICATION_ENABLED=true
+      - 'ORTHANC__DICOM_MODALITIES={"DICOMFAB": ["DICOMFAB", "localhost", 11112]}'
+
+volumes:
+  orthanc-data:
+  orthanc-data-2:

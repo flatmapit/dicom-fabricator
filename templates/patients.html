@@ -1,0 +1,548 @@
+{% extends "base.html" %}
+
+{% block title %}DICOM Fabricator - Patient Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-users"></i> Patient Management</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <div class="input-group">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search patients..." oninput="liveSearchPatients()">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+        </div>
+    </div>
+    <div class="col-md-8 text-end">
+        <button class="btn btn-outline-danger me-2" onclick="deleteSelectedPatients()" 
+                title="Delete selected patients" data-bs-toggle="tooltip" id="deleteSelectedBtn" disabled>
+            <i class="fas fa-trash"></i> Delete
+        </button>
+        <button class="btn btn-outline-success me-2" onclick="exportPatientsToCSV()" 
+                title="Export all patients data to CSV" data-bs-toggle="tooltip">
+            <i class="fas fa-file-csv"></i> Export CSV
+        </button>
+        <button class="btn btn-success" onclick="showAddPatientModal()">
+            <i class="fas fa-user-plus"></i> Add Patient
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div id="patientsTableContainer"></div>
+    </div>
+</div>
+
+<!-- Add Patient Modal -->
+<div class="modal fade" id="addPatientModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Patient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addPatientForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="firstName" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="lastName" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="mrn" class="form-label">MRN</label>
+                                <input type="text" class="form-control" id="mrn" placeholder="Auto-generate">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="birthDate" class="form-label">Birth Date</label>
+                                <input type="date" class="form-control" id="birthDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="sex" class="form-label">Sex</label>
+                                <select class="form-select" id="sex" required>
+                                    <option value="">Select...</option>
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="O">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <input type="text" class="form-control" id="address">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone</label>
+                                <input type="tel" class="form-control" id="phone">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addPatient()">Add Patient</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Patient Modal -->
+<div class="modal fade" id="editPatientModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Patient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editPatientForm">
+                    <input type="hidden" id="editPatientId" value="">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editFirstName" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="editFirstName" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editLastName" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="editLastName" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="editMrn" class="form-label">MRN</label>
+                                <input type="text" class="form-control" id="editMrn" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="editBirthDate" class="form-label">Birth Date</label>
+                                <input type="date" class="form-control" id="editBirthDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="editSex" class="form-label">Sex</label>
+                                <select class="form-select" id="editSex" required>
+                                    <option value="">Select...</option>
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                    <option value="O">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAddress" class="form-label">Address</label>
+                        <input type="text" class="form-control" id="editAddress">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editPhone" class="form-label">Phone</label>
+                                <input type="tel" class="form-control" id="editPhone">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editEmail" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="editEmail">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="updatePatient()">Update Patient</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let patientsTable;
+let patientsData = [];
+let selectedPatients = new Set();
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadPatients();
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+function loadPatients() {
+    fetch('/api/patients')
+        .then(response => response.json())
+        .then(data => {
+            patientsData = data;
+            renderPatientsTable(data);
+        })
+        .catch(error => {
+            console.error('Error loading patients:', error);
+            document.getElementById('patientsTableContainer').innerHTML = 
+                '<div class="alert alert-danger">Error loading patients</div>';
+        });
+}
+
+function renderPatientsTable(patients) {
+    const container = document.getElementById('patientsTableContainer');
+    
+    // Clear selected patients when re-rendering
+    selectedPatients.clear();
+    updateDeleteButtonVisibility();
+    
+    // Create table HTML
+    container.innerHTML = `
+        <table id="patientsTable" class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="selectAllCheckbox" 
+                                   onchange="toggleSelectAll()" title="Select all patients">
+                        </div>
+                    </th>
+                    <th>MRN</th>
+                    <th>Name</th>
+                    <th>Birth Date</th>
+                    <th>Sex</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${patients.map(patient => `
+                    <tr data-patient-id="${patient.id}" style="cursor: pointer;" onclick="editPatient('${patient.id}')">
+                        <td onclick="event.stopPropagation();">
+                            <div class="form-check">
+                                <input class="form-check-input patient-checkbox" type="checkbox" 
+                                       value="${patient.id}" onchange="togglePatientSelection('${patient.id}')">
+                            </div>
+                        </td>
+                        <td>${patient.mrn}</td>
+                        <td>${patient.last_name}, ${patient.first_name}</td>
+                        <td>${patient.birth_date}</td>
+                        <td>${patient.sex}</td>
+                        <td>${patient.phone || '-'}</td>
+                        <td>${patient.email || '-'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Initialize tosijs table
+    if (window.tosijs) {
+        patientsTable = new tosijs.Table('#patientsTable', {
+            sortable: true,
+            searchable: true,
+            paginate: true,
+            pageSize: 10,
+            responsive: true
+        });
+    }
+}
+
+let searchTimeout;
+
+function liveSearchPatients() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        const query = document.getElementById('searchInput').value.trim();
+        
+        if (!query) {
+            renderPatientsTable(patientsData);
+            return;
+        }
+        
+        // Filter locally for better performance
+        const filteredPatients = patientsData.filter(patient => {
+            const searchText = query.toLowerCase();
+            return patient.first_name.toLowerCase().includes(searchText) ||
+                   patient.last_name.toLowerCase().includes(searchText) ||
+                   patient.mrn.toLowerCase().includes(searchText) ||
+                   (patient.phone && patient.phone.toLowerCase().includes(searchText)) ||
+                   (patient.email && patient.email.toLowerCase().includes(searchText));
+        });
+        
+        renderPatientsTable(filteredPatients);
+    }, 300); // 300ms delay for live search
+}
+
+function showAddPatientModal() {
+    document.getElementById('addPatientForm').reset();
+    new bootstrap.Modal(document.getElementById('addPatientModal')).show();
+}
+
+function addPatient() {
+    const formData = {
+        first_name: document.getElementById('firstName').value,
+        last_name: document.getElementById('lastName').value,
+        mrn: document.getElementById('mrn').value,
+        birth_date: document.getElementById('birthDate').value,
+        sex: document.getElementById('sex').value,
+        address: document.getElementById('address').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value
+    };
+    
+    fetch('/api/patients', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            bootstrap.Modal.getInstance(document.getElementById('addPatientModal')).hide();
+            loadPatients();
+            showAlert('success', 'Patient added successfully');
+        } else {
+            showAlert('danger', 'Error adding patient');
+        }
+    })
+    .catch(error => {
+        console.error('Error adding patient:', error);
+        showAlert('danger', 'Error adding patient');
+    });
+}
+
+function editPatient(patientId) {
+    // Find patient data
+    const patient = patientsData.find(p => p.id === patientId);
+    if (!patient) {
+        showAlert('danger', 'Patient not found');
+        return;
+    }
+    
+    // Populate edit form
+    document.getElementById('editPatientId').value = patient.id;
+    document.getElementById('editFirstName').value = patient.first_name;
+    document.getElementById('editLastName').value = patient.last_name;
+    document.getElementById('editMrn').value = patient.mrn;
+    document.getElementById('editBirthDate').value = patient.birth_date;
+    document.getElementById('editSex').value = patient.sex;
+    document.getElementById('editAddress').value = patient.address || '';
+    document.getElementById('editPhone').value = patient.phone || '';
+    document.getElementById('editEmail').value = patient.email || '';
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('editPatientModal')).show();
+}
+
+function updatePatient() {
+    const patientId = document.getElementById('editPatientId').value;
+    const formData = {
+        first_name: document.getElementById('editFirstName').value,
+        last_name: document.getElementById('editLastName').value,
+        mrn: document.getElementById('editMrn').value,
+        birth_date: document.getElementById('editBirthDate').value,
+        sex: document.getElementById('editSex').value,
+        address: document.getElementById('editAddress').value,
+        phone: document.getElementById('editPhone').value,
+        email: document.getElementById('editEmail').value
+    };
+    
+    fetch(`/api/patients/${patientId}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id || data.message) {
+            bootstrap.Modal.getInstance(document.getElementById('editPatientModal')).hide();
+            loadPatients();
+            showAlert('success', 'Patient updated successfully');
+        } else {
+            showAlert('danger', 'Error updating patient');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating patient:', error);
+        showAlert('danger', 'Error updating patient');
+    });
+}
+
+// Selection functions
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.patient-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+        const patientId = checkbox.value;
+        if (selectAllCheckbox.checked) {
+            selectedPatients.add(patientId);
+        } else {
+            selectedPatients.delete(patientId);
+        }
+    });
+    
+    updateDeleteButtonVisibility();
+}
+
+function togglePatientSelection(patientId) {
+    if (selectedPatients.has(patientId)) {
+        selectedPatients.delete(patientId);
+    } else {
+        selectedPatients.add(patientId);
+    }
+    
+    // Update select all checkbox state
+    const totalCheckboxes = document.querySelectorAll('.patient-checkbox').length;
+    const checkedCheckboxes = document.querySelectorAll('.patient-checkbox:checked').length;
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = totalCheckboxes === checkedCheckboxes && totalCheckboxes > 0;
+        selectAllCheckbox.indeterminate = checkedCheckboxes > 0 && checkedCheckboxes < totalCheckboxes;
+    }
+    
+    updateDeleteButtonVisibility();
+}
+
+function updateDeleteButtonVisibility() {
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    
+    if (selectedPatients.size > 0) {
+        deleteBtn.disabled = false;
+        deleteBtn.title = `Delete ${selectedPatients.size} selected patient(s)`;
+    } else {
+        deleteBtn.disabled = true;
+        deleteBtn.title = 'Delete selected patients';
+    }
+}
+
+function deleteSelectedPatients() {
+    const totalPatients = patientsData.length;
+    const selectedCount = selectedPatients.size;
+    
+    if (selectedCount === 0) {
+        showAlert('warning', 'No patients selected for deletion');
+        return;
+    }
+    
+    // Create confirmation message
+    const confirmMessage = `You are about to delete ${selectedCount} out of ${totalPatients} patient(s).\n\n` +
+                          `This action cannot be undone. Are you sure you want to continue?`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    // Convert Set to Array for the API call
+    const patientIds = Array.from(selectedPatients);
+    
+    // Show loading state on button
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    const originalText = deleteBtn.innerHTML;
+    deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+    deleteBtn.disabled = true;
+    
+    // Send batch delete request
+    fetch('/api/patients/batch-delete', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ patient_ids: patientIds })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', `Successfully deleted ${data.deleted} patient(s)`);
+            selectedPatients.clear();
+            loadPatients();
+        } else {
+            showAlert('danger', data.error || 'Error deleting patients');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting patients:', error);
+        showAlert('danger', 'Error deleting selected patients');
+    })
+    .finally(() => {
+        deleteBtn.innerHTML = originalText;
+        deleteBtn.disabled = false;
+    });
+}
+
+function exportPatientsToCSV() {
+    // Show loading indicator
+    showAlert('info', 'Preparing patients CSV export...');
+    
+    // Trigger CSV download from server
+    const link = document.createElement('a');
+    link.href = '/api/patients/export/csv';
+    link.download = `patients_${new Date().toISOString().slice(0,19).replace(/[:-]/g,'')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setTimeout(() => {
+        showAlert('success', 'Patients CSV export completed successfully!');
+    }, 1000);
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+    alertDiv.style.zIndex = '9999';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}

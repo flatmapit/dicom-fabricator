@@ -1,0 +1,59 @@
+{
+  "Name": "Test PACS for DICOM Fabricator",
+  "StorageDirectory": "/var/lib/orthanc/db",
+  "IndexDirectory": "/var/lib/orthanc/db",
+  "StorageCompression": false,
+  "MaximumStorageSize": 0,
+  "MaximumPatientCount": 0,
+  
+  "HttpServerEnabled": true,
+  "HttpPort": 8042,
+  "HttpDescribeErrors": true,
+  "HttpCompressionEnabled": true,
+  
+  "DicomServerEnabled": true,
+  "DicomAet": "TESTPACS",
+  "DicomCheckCalledAet": false,
+  "DicomPort": 4242,
+  "DefaultEncoding": "Latin1",
+  "AcceptedTransferSyntaxes": ["1.2.840.10008.1.*"],
+  
+  "UnknownSopClassAccepted": false,
+  "DicomAlwaysAllowEcho": true,
+  "DicomAlwaysAllowStore": true,
+  "DicomAlwaysAllowFind": true,
+  "DicomCheckModalityHost": false,
+  "DicomScpTimeout": 30,
+  
+  "DicomModalities": {
+    "DICOMFAB": ["DICOMFAB", "host.docker.internal", 11112],
+    "SELF": ["TESTPACS", "localhost", 4242]
+  },
+  
+  "RegisteredUsers": {
+    "test": "test123"
+  },
+  
+  "AuthenticationEnabled": true,
+  
+  "RemoteAccessAllowed": true,
+  
+  "Plugins": [
+    "/usr/share/orthanc/plugins",
+    "/usr/local/share/orthanc/plugins"
+  ],
+  
+  "WebDavEnabled": true,
+  "WebDavDeleteAllowed": true,
+  "WebDavUploadAllowed": true,
+  
+  "DicomWeb": {
+    "Enable": true,
+    "Root": "/dicom-web/",
+    "EnableWado": true,
+    "WadoRoot": "/wado",
+    "Ssl": false,
+    "StudiesMetadata": "Full",
+    "SeriesMetadata": "Full"
+  }
+}
