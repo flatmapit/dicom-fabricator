@@ -154,11 +154,45 @@ The application expects HL7 ORM (Order Entry) messages. Key fields:
 
 ## 🤝 Contributing
 
+### Git Workflow
+
+This project follows a structured Git branching strategy:
+
+- **`main`** - Production-ready code, stable releases
+- **`develop`** - Integration branch for features, main development work
+- **`feature/*`** - Feature branches for individual development work
+
+#### For New Features:
+
+1. **Start from develop:**
+   ```bash
+   git checkout develop
+   git pull origin develop
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Work on your feature:**
+   - Make commits with clear, descriptive messages
+   - Update CHANGELOG.md for significant changes
+   - Keep commits atomic and focused
+
+3. **Complete and merge:**
+   ```bash
+   git checkout develop
+   git merge feature/your-feature-name
+   git push origin develop
+   ```
+
+For detailed workflow information, see [Git Workflow Documentation](docs/GIT_WORKFLOW.md).
+
+#### General Contributing Guidelines:
+
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch from develop
 3. Make your changes
 4. Add tests if applicable
-5. Submit a pull request
+5. Update CHANGELOG.md
+6. Submit a pull request to develop
 
 ## 📄 License
 
