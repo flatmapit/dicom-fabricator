@@ -245,8 +245,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function loadPacsConfigs() {
     try {
+        console.log('Loading PACS configs...');
         const response = await fetch('/api/pacs/configs');
+        console.log('Response status:', response.status);
         const data = await response.json();
+        console.log('PACS configs data:', data);
         
         const select = document.getElementById('queryPacsSelect');
         select.innerHTML = '';
@@ -300,8 +303,6 @@ async function loadPacsConfigs() {
             updateSelectedPacsHint();
             
             // Add a more robust change detection for both tosijs and standard select
-            const select = document.getElementById('queryPacsSelect');
-            
             // Listen for both change events and attribute changes (for tosijs)
             select.addEventListener('change', function() {
                 setTimeout(() => updateSelectedPacsHint(), 50);
@@ -317,6 +318,7 @@ async function loadPacsConfigs() {
         }
     } catch (error) {
         console.error('Error loading PACS configs:', error);
+        console.error('Error details:', error.message, error.stack);
         document.getElementById('queryPacsSelect').innerHTML = '<option value="">Error loading PACS configs</option>';
     }
 }
@@ -670,36 +672,36 @@ function displayResults(results, queryInfo) {
     const hasMultiplePacs = results.some(result => result.pacs_name);
     const pacsColumn = hasMultiplePacs ? '<th>PACS</th>' : '';
     
-    // Create table with resizable columns
+    // Create table with optimized column widths based on priority
     const tableHtml = `
         <div class="table-responsive">
             <table class="table table-striped table-hover table-sm" id="resultsTable" style="table-layout: fixed; font-size: 0.8rem;">
                 <thead class="table-dark">
                     <tr>
-                        ${pacsColumn}
-                        <th style="width: 160px; min-width: 160px;">PATIENT NAME</th>
-                        <th style="width: 120px; min-width: 120px;">PATIENT ID</th>
-                        <th style="width: 100px; min-width: 100px;">DATE</th>
-                        <th style="width: 75px; min-width: 75px;">TIME</th>
-                        <th style="width: 150px; min-width: 120px;">STUDY DESCRIPTION</th>
-                        <th style="width: 140px; min-width: 140px;">ACCESSION</th>
-                        <th style="width: 65px; min-width: 65px;">MODALITY</th>
-                        <th style="width: 45px; min-width: 45px;">SERIES</th>
-                        <th style="width: 45px; min-width: 45px;">IMAGES</th>
-                        <th style="width: 160px; min-width: 120px;">STUDY UID</th>
+                        ${hasMultiplePacs ? '<th style="max-width: 80px; width: 80px; min-width: 60px;">PACS</th>' : ''}
+                        <th style="width: 140px; min-width: 120px;">PATIENT NAME</th>
+                        <th style="width: 100px; min-width: 90px;">PATIENT ID</th>
+                        <th style="width: 90px; min-width: 80px;">DATE</th>
+                        <th style="width: 70px; min-width: 60px;">TIME</th>
+                        <th style="width: 120px; min-width: 100px;">STUDY DESCRIPTION</th>
+                        <th style="width: 160px; min-width: 140px;">ACCESSION</th>
+                        <th style="width: 70px; min-width: 60px;">MODALITY</th>
+                        <th style="width: 50px; min-width: 40px;">SERIES</th>
+                        <th style="width: 50px; min-width: 40px;">IMAGES</th>
+                        <th style="width: 140px; min-width: 120px;">STUDY UID</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${results.map((result, index) => `
                         <tr onclick="showStudyDetails(${index})" style="cursor: pointer;" 
                             title="Click to view detailed study information" data-bs-toggle="tooltip">
-                            ${hasMultiplePacs ? `
-                                <td style="width: 15px; min-width: 15px;">
-                                    <span class="text-muted" title="${result.pacs_name || 'Unknown PACS'}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">
-                                        ${result.pacs_short_name || result.pacs_name || '-'}
-                                    </span>
-                                </td>
-                            ` : ''}
+                                                    ${hasMultiplePacs ? `
+                            <td style="max-width: 80px; width: 80px; min-width: 60px;">
+                                <span class="text-muted" title="${result.pacs_name || 'Unknown PACS'}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; max-width: 100%;">
+                                    ${result.pacs_short_name || result.pacs_name || '-'}
+                                </span>
+                            </td>
+                        ` : ''}
                             <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.patient_name || '-'}">${result.patient_name || '-'}</td>
                             <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.patient_id || '-'}">${result.patient_id || '-'}</td>
                             <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.study_date_formatted || result.study_date || '-'}">${result.study_date_formatted || result.study_date || '-'}</td>
@@ -1257,11 +1259,15 @@ function addCompactStyles() {
             /* Compact table styling */
             #queryResults .table {
                 margin-bottom: 0.5rem;
+                table-layout: fixed !important;
             }
             #queryResults .table td,
             #queryResults .table th {
                 padding: 0.3rem 0.5rem;
                 vertical-align: middle;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
             #queryResults .badge {
                 font-size: 0.65rem;
@@ -1270,6 +1276,13 @@ function addCompactStyles() {
             #queryResults .btn-sm {
                 padding: 0.1rem 0.3rem;
                 font-size: 0.65rem;
+            }
+            /* Force PACS column to be narrow */
+            #queryResults .table th:first-child,
+            #queryResults .table td:first-child {
+                max-width: 80px !important;
+                width: 80px !important;
+                min-width: 60px !important;
             }
         `;
         document.head.appendChild(style);
