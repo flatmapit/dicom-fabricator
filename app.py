@@ -1866,16 +1866,21 @@ def query_pacs():
         search_params.extend(['-k', 'PatientName=*'])
     
     # Default query fields to retrieve (only add if not already present as search criteria)
-    # Use a minimal set of essential fields that most PACS servers support
-    # Note: Some PACS servers may not have all fields
+    # Include more fields to match the local DICOM table display
     default_fields = [
         'PatientName',
         'PatientID', 
         'StudyDate',
+        'StudyTime',
         'StudyDescription',
         'AccessionNumber',
-        'StudyInstanceUID'
-        # Removed SeriesInstanceUID and Modality as they may not be available in all PACS servers
+        'StudyInstanceUID',
+        'Modality',
+        'SeriesInstanceUID',
+        'SeriesNumber',
+        'SeriesDescription',
+        'NumberOfStudyRelatedSeries',
+        'NumberOfStudyRelatedInstances'
     ]
     
     # Check which fields are already present as search criteria
@@ -2032,6 +2037,8 @@ def parse_dicom_query_output(output, query_level):
                 'AccessionNumber': 'accession_number',
                 'StudyInstanceUID': 'study_uid',
                 'SeriesInstanceUID': 'series_uid',
+                'SeriesNumber': 'series_number',
+                'SeriesDescription': 'series_description',
                 'Modality': 'modality',
                 'NumberOfStudyRelatedSeries': 'series_count',
                 'NumberOfStudyRelatedInstances': 'instance_count',
@@ -2057,11 +2064,14 @@ def parse_dicom_query_output(output, query_level):
                 "(0010,0010)": "patient_name",      # PatientName
                 "(0010,0020)": "patient_id",        # PatientID
                 "(0008,0020)": "study_date",        # StudyDate
+                "(0008,0030)": "study_time",        # StudyTime
                 "(0008,1030)": "study_description", # StudyDescription
                 "(0008,0050)": "accession_number",  # AccessionNumber
+                "(0008,0060)": "modality",          # Modality
                 "(0020,000d)": "study_uid",         # StudyInstanceUID
                 "(0020,000e)": "series_uid",        # SeriesInstanceUID
-                "(0008,0060)": "modality"           # Modality
+                "(0020,0011)": "series_number",     # SeriesNumber
+                "(0008,103e)": "series_description" # SeriesDescription
             }
             
             if tag_coords in tag_mapping:
@@ -2131,6 +2141,31 @@ def format_study_result(study_data):
                 study_data[field] = int(study_data[field])
             except:
                 study_data[field] = 0
+    
+    # Ensure modality is properly set
+    if 'modality' not in study_data or not study_data['modality']:
+        # Try to get modality from series if available
+        if 'series_description' in study_data and study_data['series_description']:
+            # Extract modality from series description if it contains modality info
+            series_desc = study_data['series_description'].upper()
+            if 'CT' in series_desc:
+                study_data['modality'] = 'CT'
+            elif 'MR' in series_desc:
+                study_data['modality'] = 'MR'
+            elif 'DX' in series_desc or 'CR' in series_desc:
+                study_data['modality'] = 'DX'
+            elif 'US' in series_desc:
+                study_data['modality'] = 'US'
+            else:
+                study_data['modality'] = 'Unknown'
+        else:
+            study_data['modality'] = 'Unknown'
+    
+    # Ensure series and instance counts are set
+    if 'series_count' not in study_data or not study_data['series_count']:
+        study_data['series_count'] = 0
+    if 'instance_count' not in study_data or not study_data['instance_count']:
+        study_data['instance_count'] = 0
     
     return study_data
 
