@@ -348,8 +348,14 @@ function updateSelectedPacsHint(selectedValues = null) {
         hint.style.display = 'block';
         hintText.textContent = `Selected: ${option ? option.textContent : 'Unknown PACS'}`;
     } else {
+        // Get the names of selected PACS servers
+        const selectedPacsNames = selectedValues.map(value => {
+            const option = document.querySelector(`#queryPacsSelect option[value="${value}"]`);
+            return option ? option.textContent : 'Unknown PACS';
+        });
+        
         hint.style.display = 'block';
-        hintText.textContent = `Selected ${selectedValues.length} PACS servers`;
+        hintText.textContent = `Selected ${selectedValues.length} PACS servers: ${selectedPacsNames.join(', ')}`;
     }
     
     // Debug logging
