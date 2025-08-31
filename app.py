@@ -840,13 +840,18 @@ def get_dicom_headers(filename):
             headers[tag_str] = {
                 'name': tag_name,
                 'value': value,
-                'vr': elem.VR if hasattr(elem, 'VR') else 'UN'
+                'vr': elem.VR if hasattr(elem, 'VR') else 'UN',
+                'group': elem.tag.group,
+                'element': elem.tag.element
             }
+        
+        # Sort headers by tag ID (group, then element)
+        sorted_headers = dict(sorted(headers.items(), key=lambda x: (x[1]['group'], x[1]['element'])))
         
         return jsonify({
             'success': True,
             'filename': filename,
-            'headers': headers
+            'headers': sorted_headers
         })
         
     except Exception as e:

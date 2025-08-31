@@ -2117,8 +2117,18 @@ function getStandardDicomTag(tagName) {
 function displayDicomMetadata(metadata) {
     let metadataHtml = '';
     
-    // Display all DICOM tags in alphabetical order for easy browsing
-    const allTags = Object.keys(metadata).sort();
+    // Display all DICOM tags sorted by tag ID (group, element)
+    const allTags = Object.keys(metadata).sort((a, b) => {
+        // Extract group and element from tag strings like "0008,0020"
+        const [groupA, elementA] = a.split(',').map(x => parseInt(x, 16));
+        const [groupB, elementB] = b.split(',').map(x => parseInt(x, 16));
+        
+        // Sort by group first, then by element
+        if (groupA !== groupB) {
+            return groupA - groupB;
+        }
+        return elementA - elementB;
+    });
     const tagCount = allTags.length;
     
     metadataHtml += `

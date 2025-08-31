@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation Guidelines**: Created screenshot capture guidelines and requirements
 - **Issue Tracking**: Created GitHub issue #1 for tracking visual documentation progress
 
+#### DICOM Tag Display Improvements
+- **Tag ID Sorting**: Modified DICOM tag display to sort by tag ID (group, element) instead of alphabetically
+- **Backend Sorting**: Updated `/api/dicom/headers/<filename>` endpoint to sort tags by group and element
+- **Frontend Sorting**: Updated JavaScript to sort DICOM tags by tag ID for consistent display
+- **Enhanced Readability**: Tags now display in logical DICOM order (0008, 0010, 0020, etc.)
+
 #### Git Workflow Setup
 
 #### Development Infrastructure
