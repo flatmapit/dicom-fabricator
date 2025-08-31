@@ -26,7 +26,8 @@ A comprehensive DICOM study generation and management system built with Python a
 
 ## 📋 Prerequisites
 
-- Python 3.8+
+- Python 3.8+ (3.11 recommended)
+- pyenv (recommended for Python version management)
 - DCMTK tools (findscu, storescu, movescu, echoscu, movescu)
 - Docker and Docker Compose (for PACS servers)
 
@@ -39,13 +40,52 @@ git clone https://github.com/flatmapit/dicom-fabricator.git
 cd dicom-fabricator
 ```
 
-### 2. Install Dependencies
+### 2. Set Up Python Environment (Recommended)
+
+#### Install pyenv (if not already installed)
+
+**macOS:**
+```bash
+brew install pyenv
+```
+
+**Ubuntu/Debian:**
+```bash
+curl https://pyenv.run | bash
+```
+
+**Windows:**
+```bash
+# Install via pip
+pip install pyenv-win
+```
+
+#### Create and activate Python environment
+
+```bash
+# Install Python 3.11 (recommended version)
+pyenv install 3.11.0
+
+# Set local Python version for this project
+pyenv local 3.11.0
+
+# Create virtual environment
+python -m venv .venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source .venv/bin/activate
+# On Windows:
+.venv\Scripts\activate
+```
+
+### 3. Install Dependencies
 
 ```bash
 pip install -r config/requirements.txt
 ```
 
-### 3. Install DCMTK
+### 4. Install DCMTK
 
 #### macOS
 ```bash
@@ -60,7 +100,7 @@ sudo apt-get install dcmtk
 #### Windows
 Download from [DCMTK website](https://dcmtk.org/en/dcmtk/dcmtk-downloads/)
 
-### 4. Start PACS Servers (Optional)
+### 5. Start PACS Servers (Optional)
 
 ```bash
 cd docker
@@ -71,7 +111,7 @@ This will start two Orthanc PACS servers:
 - **Orthanc Test PACS**: localhost:4242 (DICOM), localhost:8042 (HTTP)
 - **Orthanc Test PACS 2**: localhost:4243 (DICOM), localhost:8043 (HTTP)
 
-### 5. Run the Application
+### 6. Run the Application
 
 ```bash
 python app.py
