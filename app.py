@@ -2118,7 +2118,10 @@ def format_study_result(study_data):
         try:
             # Convert HHMMSS to readable format
             time_obj = datetime.strptime(study_time[:6], '%H%M%S')
-            study_data['formatted_time'] = time_obj.strftime('%H:%M:%S')
+            formatted_time = time_obj.strftime('%H:%M:%S')
+            study_data['formatted_time'] = formatted_time
+            # Replace the original time with formatted version for display
+            study_data['study_time'] = formatted_time
         except:
             study_data['formatted_time'] = study_time
     else:
