@@ -629,7 +629,7 @@ function displayResults(results, queryInfo) {
     // Show export button
     exportBtn.style.display = 'inline-block';
     
-    // Create results summary
+    // Create results summary with density controls
     const maxResultsInfo = queryInfo.max_results_requested ? 
         `<br><strong>Max Results:</strong> ${queryInfo.max_results_requested} (${results.length} returned)` : '';
     
@@ -638,10 +638,30 @@ function displayResults(results, queryInfo) {
     
     const summaryHtml = `
         <div class="alert alert-info mb-3">
-            <i class="fas fa-info-circle"></i>
-            <strong>Query Results</strong><br>
-            Found ${results.length} result(s)${maxResultsInfo}${pacsInfo}<br>
-            <strong>Search Criteria:</strong> ${formatSearchCriteria(queryInfo.search_criteria)}
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Query Results</strong><br>
+                    Found ${results.length} result(s)${maxResultsInfo}${pacsInfo}<br>
+                    <strong>Search Criteria:</strong> ${formatSearchCriteria(queryInfo.search_criteria)}
+                </div>
+                <div class="ms-3">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Table density">
+                        <button type="button" class="btn btn-outline-secondary" onclick="setTableDensity('compact')" title="Compact view">
+                            <i class="fas fa-compress-alt"></i> Compact
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary active" onclick="setTableDensity('normal')" title="Normal view">
+                            <i class="fas fa-table"></i> Normal
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="setTableDensity('dense')" title="Dense view">
+                            <i class="fas fa-compress"></i> Dense
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="setTableDensity('ultra-dense')" title="Ultra dense view">
+                            <i class="fas fa-compress-arrows-alt"></i> Ultra
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
     
@@ -656,16 +676,16 @@ function displayResults(results, queryInfo) {
                 <thead class="table-dark">
                     <tr>
                         ${pacsColumn}
-                        <th style="width: 140px; min-width: 140px;">PATIENT NAME</th>
-                        <th style="width: 110px; min-width: 110px;">PATIENT ID</th>
-                        <th style="width: 90px; min-width: 90px;">DATE</th>
-                        <th style="width: 70px; min-width: 70px;">TIME</th>
-                        <th style="width: 180px; min-width: 150px;">STUDY DESCRIPTION</th>
-                        <th style="width: 130px; min-width: 130px;">ACCESSION</th>
-                        <th style="width: 70px; min-width: 70px;">MODALITY</th>
-                        <th style="width: 50px; min-width: 50px;">SERIES</th>
-                        <th style="width: 50px; min-width: 50px;">IMAGES</th>
-                        <th style="width: 180px; min-width: 150px;">STUDY UID</th>
+                        <th style="width: 160px; min-width: 160px;">PATIENT NAME</th>
+                        <th style="width: 120px; min-width: 120px;">PATIENT ID</th>
+                        <th style="width: 100px; min-width: 100px;">DATE</th>
+                        <th style="width: 75px; min-width: 75px;">TIME</th>
+                        <th style="width: 150px; min-width: 120px;">STUDY DESCRIPTION</th>
+                        <th style="width: 140px; min-width: 140px;">ACCESSION</th>
+                        <th style="width: 65px; min-width: 65px;">MODALITY</th>
+                        <th style="width: 45px; min-width: 45px;">SERIES</th>
+                        <th style="width: 45px; min-width: 45px;">IMAGES</th>
+                        <th style="width: 160px; min-width: 120px;">STUDY UID</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -674,7 +694,7 @@ function displayResults(results, queryInfo) {
                             title="Click to view detailed study information" data-bs-toggle="tooltip">
                             ${hasMultiplePacs ? `
                                 <td style="width: 60px; min-width: 60px;">
-                                    <span class="text-muted small" title="${result.pacs_name || 'Unknown PACS'}">
+                                    <span class="text-muted" title="${result.pacs_name || 'Unknown PACS'}">
                                         ${(result.pacs_short_name || result.pacs_name || '-').substring(0, 8)}
                                     </span>
                                 </td>
@@ -716,6 +736,9 @@ function displayResults(results, queryInfo) {
     `;
     
     container.innerHTML = summaryHtml + tableHtml;
+    
+    // Add density CSS styles
+    addDensityStyles();
     
     // Initialize tosijs for sorting and pagination
     if (window.tosijs) {
@@ -1223,5 +1246,121 @@ async function copyToClipboard(text, label, event) {
         }, 2000);
     }
 }
+
+// Table density control functions
+function addDensityStyles() {
+    if (!document.getElementById('density-styles')) {
+        const style = document.createElement('style');
+        style.id = 'density-styles';
+        style.textContent = `
+            /* Compact density */
+            .table-density-compact {
+                font-size: 0.8rem !important;
+            }
+            .table-density-compact .table {
+                margin-bottom: 0.5rem;
+            }
+            .table-density-compact .table td,
+            .table-density-compact .table th {
+                padding: 0.3rem 0.5rem;
+                vertical-align: middle;
+            }
+            .table-density-compact .badge {
+                font-size: 0.65rem;
+                padding: 0.2rem 0.4rem;
+            }
+            .table-density-compact .btn-sm {
+                padding: 0.1rem 0.3rem;
+                font-size: 0.65rem;
+            }
+            
+            /* Dense density */
+            .table-density-dense {
+                font-size: 0.75rem !important;
+            }
+            .table-density-dense .table {
+                margin-bottom: 0.3rem;
+            }
+            .table-density-dense .table td,
+            .table-density-dense .table th {
+                padding: 0.2rem 0.4rem;
+                vertical-align: middle;
+            }
+            .table-density-dense .badge {
+                font-size: 0.6rem;
+                padding: 0.15rem 0.3rem;
+            }
+            .table-density-dense .btn-sm {
+                padding: 0.05rem 0.25rem;
+                font-size: 0.6rem;
+            }
+            
+            /* Ultra dense density */
+            .table-density-ultra-dense {
+                font-size: 0.7rem !important;
+            }
+            .table-density-ultra-dense .table {
+                margin-bottom: 0.2rem;
+            }
+            .table-density-ultra-dense .table td,
+            .table-density-ultra-dense .table th {
+                padding: 0.15rem 0.3rem;
+                vertical-align: middle;
+                line-height: 1.1;
+            }
+            .table-density-ultra-dense .badge {
+                font-size: 0.55rem;
+                padding: 0.1rem 0.25rem;
+            }
+            .table-density-ultra-dense .btn-sm {
+                padding: 0.05rem 0.2rem;
+                font-size: 0.55rem;
+            }
+            .table-density-ultra-dense .table-responsive {
+                max-height: 70vh;
+                overflow-y: auto;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+function setTableDensity(density) {
+    const container = document.getElementById('queryResults');
+    const table = container.querySelector('#resultsTable');
+    
+    // Remove all density classes
+    container.classList.remove('table-density-compact', 'table-density-dense', 'table-density-ultra-dense');
+    
+    // Add selected density class
+    if (density !== 'normal') {
+        container.classList.add(`table-density-${density}`);
+    }
+    
+    // Update button states
+    const buttons = container.querySelectorAll('.btn-group .btn');
+    buttons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.onclick.toString().includes(density)) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Store preference
+    localStorage.setItem('table-density-preference', density);
+    
+    // Add log entry
+    addLogEntry('info', `Switched to ${density} table density`);
+}
+
+// Load density preference on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const savedDensity = localStorage.getItem('table-density-preference');
+    if (savedDensity && savedDensity !== 'normal') {
+        setTimeout(() => {
+            setTableDensity(savedDensity);
+        }, 100);
+    }
+});
 </script>
 {% endblock %}
