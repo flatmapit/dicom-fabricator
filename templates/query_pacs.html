@@ -20,13 +20,16 @@
             <div class="card-body">
                 <form id="pacsQueryForm">
                     <div class="row mb-3">
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label for="queryPacsSelect" class="form-label">Select PACS</label>
-                            <select id="queryPacsSelect" class="form-select">
+                            <select id="queryPacsSelect" class="form-select" multiple>
                                 <option value="">Loading...</option>
                             </select>
+                            <div id="selectedPacsHint" class="form-text mt-1" style="display: none;">
+                                <i class="fas fa-info-circle"></i> <span id="selectedPacsText"></span>
+                            </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label for="daysAgo" class="form-label">Date Range</label>
                             <select id="daysAgo" class="form-select">
                                 <option value="0">All dates</option>
@@ -37,7 +40,7 @@
                                 <option value="365">Last year</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label for="maxResults" class="form-label">
                                 Maximum Results 
                                 <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" 
@@ -46,14 +49,6 @@
                             </label>
                             <input type="number" id="maxResults" class="form-control" value="100" min="1" max="1000" 
                                    title="Approximate maximum number of studies to return (1-1000)">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">&nbsp;</label>
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-search"></i> Query PACS
-                                </button>
-                            </div>
                         </div>
                     </div>
                     
@@ -98,6 +93,14 @@
                                 <strong>Tips:</strong> Leave fields empty to search all values. 
                                 Use wildcards (*) for partial matches. Combine criteria to narrow results.
                             </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-search"></i> Query PACS
+                            </button>
                         </div>
                     </div>
                 </form>
@@ -249,12 +252,6 @@ async function loadPacsConfigs() {
         select.innerHTML = '';
         
         if (data.success && data.configs.length > 0) {
-            // Add default option
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.textContent = 'Select PACS server...';
-            select.appendChild(defaultOption);
-            
             let hasRememberedSelection = false;
             const rememberedPacs = window.PacsMemory ? window.PacsMemory.getRememberedPacs() : null;
             
@@ -262,6 +259,9 @@ async function loadPacsConfigs() {
                 const option = document.createElement('option');
                 option.value = config.id;
                 option.textContent = `${config.name} (${config.host}:${config.port})`;
+                option.dataset.pacsName = config.name;
+                option.dataset.pacsHost = config.host;
+                option.dataset.pacsPort = config.port;
                 
                 // Prefer remembered selection over default
                 if (rememberedPacs && config.id === rememberedPacs) {
@@ -273,12 +273,54 @@ async function loadPacsConfigs() {
                 
                 select.appendChild(option);
             });
+            
+            // Initialize tosijs-ui for multi-select with search
+            if (window.tosijs) {
+                setTimeout(() => {
+                    window.tosijs('#queryPacsSelect', {
+                        search: {
+                            enabled: true,
+                            placeholder: 'Search PACS servers...'
+                        },
+                        multiple: true,
+                        placeholder: 'Select one or more PACS servers...',
+                        onChange: function(selectedValues) {
+                            updateSelectedPacsHint(selectedValues);
+                        }
+                    });
+                }, 100);
+            }
+            
+            // Update hint for initial selection
+            updateSelectedPacsHint();
+            
         } else {
             select.innerHTML = '<option value="">No PACS configurations available</option>';
         }
     } catch (error) {
         console.error('Error loading PACS configs:', error);
         document.getElementById('queryPacsSelect').innerHTML = '<option value="">Error loading PACS configs</option>';
+    }
+}
+
+function updateSelectedPacsHint(selectedValues = null) {
+    const hint = document.getElementById('selectedPacsHint');
+    const hintText = document.getElementById('selectedPacsText');
+    
+    if (!selectedValues) {
+        const select = document.getElementById('queryPacsSelect');
+        selectedValues = Array.from(select.selectedOptions).map(option => option.value);
+    }
+    
+    if (selectedValues.length === 0) {
+        hint.style.display = 'none';
+    } else if (selectedValues.length === 1) {
+        const option = document.querySelector(`#queryPacsSelect option[value="${selectedValues[0]}"]`);
+        hint.style.display = 'block';
+        hintText.textContent = `Selected: ${option ? option.textContent : 'Unknown PACS'}`;
+    } else {
+        hint.style.display = 'block';
+        hintText.textContent = `Selected ${selectedValues.length} PACS servers`;
     }
 }
 
@@ -362,8 +404,11 @@ function addCommandOutput(command, output, exitCode = 0) {
     container.scrollTop = container.scrollHeight;
 }
 
+let queryCancelled = false;
+let currentQueryController = null;
+
 async function queryPacs() {
-    const pacsId = document.getElementById('queryPacsSelect').value;
+    const selectedOptions = document.getElementById('queryPacsSelect').selectedOptions;
     const patientName = document.getElementById('patientNameQuery').value.trim();
     const patientId = document.getElementById('patientIdQuery').value.trim();
     const accession = document.getElementById('accessionQuery').value.trim();
@@ -372,15 +417,18 @@ async function queryPacs() {
     const daysAgo = parseInt(document.getElementById('daysAgo').value) || 0;
     const maxResults = parseInt(document.getElementById('maxResults').value) || 100;
     
-    if (!pacsId) {
-        alert('Please select a PACS server');
+    if (selectedOptions.length === 0) {
+        alert('Please select at least one PACS server');
         return;
     }
     
-    // Show loading
+    // Reset cancellation flag
+    queryCancelled = false;
+    
+    // Show loading with cancel button
     const submitBtn = document.querySelector('#pacsQueryForm button[type="submit"]');
     const originalContent = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Querying...';
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Querying... <button type="button" class="btn btn-sm btn-outline-light ms-2" onclick="cancelQuery()">Cancel</button>';
     submitBtn.disabled = true;
     
     // Clear previous results
@@ -390,13 +438,9 @@ async function queryPacs() {
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Searching...</span>
             </div>
-            <div class="mt-2">Querying PACS server...</div>
+            <div class="mt-2">Querying ${selectedOptions.length} PACS server(s)...</div>
         </div>
     `;
-    
-    // Add log entry
-    const pacsName = document.getElementById('queryPacsSelect').selectedOptions[0].textContent;
-    addLogEntry('info', `Starting PACS query on ${pacsName}`);
     
     // Build search criteria log
     const criteria = [];
@@ -412,52 +456,125 @@ async function queryPacs() {
         addLogEntry('info', `Search criteria: ${criteria.join(', ')}`);
     }
     
+    const allResults = [];
+    const pacsResults = [];
+    
     try {
-        const response = await fetch('/api/pacs/query', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                pacs_config_id: pacsId,
-                patient_name: patientName,
-                patient_id: patientId,
-                accession_number: accession,
-                study_uid: studyUid,
-                series_uid: seriesUid,
-                days_ago: daysAgo,
-                max_results: maxResults
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            currentResults = data.results;
-            currentQueryInfo = data.query_info;
-            
-            addLogEntry('success', `Query completed successfully - found ${data.results.length} result(s)`);
-            
-            // Add command output if available
-            if (data.command_output) {
-                addCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
+        // Query each PACS sequentially
+        for (let i = 0; i < selectedOptions.length; i++) {
+            if (queryCancelled) {
+                addLogEntry('warning', 'Query cancelled by user');
+                break;
             }
             
-            displayResults(data.results, data.query_info);
-        } else {
-            addLogEntry('error', `Query failed: ${data.error}`);
-            if (data.command_output) {
-                addCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
+            const pacsOption = selectedOptions[i];
+            const pacsId = pacsOption.value;
+            const pacsName = pacsOption.textContent;
+            const pacsShortName = pacsOption.dataset.pacsName || pacsName.split(' (')[0];
+            
+            addLogEntry('info', `Querying PACS ${i + 1}/${selectedOptions.length}: ${pacsName}`);
+            
+            // Create abort controller for this query
+            currentQueryController = new AbortController();
+            
+            try {
+                const response = await fetch('/api/pacs/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pacs_config_id: pacsId,
+                        patient_name: patientName,
+                        patient_id: patientId,
+                        accession_number: accession,
+                        study_uid: studyUid,
+                        series_uid: seriesUid,
+                        days_ago: daysAgo,
+                        max_results: maxResults
+                    }),
+                    signal: currentQueryController.signal
+                });
+                
+                if (queryCancelled) break;
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Add PACS information to each result
+                    const pacsResults = data.results.map(result => ({
+                        ...result,
+                        pacs_name: pacsName,
+                        pacs_short_name: pacsShortName,
+                        pacs_id: pacsId
+                    }));
+                    
+                    allResults.push(...pacsResults);
+                    
+                    addLogEntry('success', `PACS ${pacsName}: Found ${data.results.length} result(s)`);
+                    
+                    // Add command output if available
+                    if (data.command_output) {
+                        addCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
+                    }
+                } else {
+                    addLogEntry('error', `PACS ${pacsName}: Query failed - ${data.error}`);
+                    if (data.command_output) {
+                        addCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
+                    }
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    addLogEntry('warning', `PACS ${pacsName}: Query cancelled`);
+                } else {
+                    addLogEntry('error', `PACS ${pacsName}: Network error - ${error.message}`);
+                }
             }
-            displayError(data.error);
+        }
+        
+        if (!queryCancelled) {
+            // Sort all results by study date (newest first)
+            allResults.sort((a, b) => {
+                const dateA = a.study_date || '19000101';
+                const dateB = b.study_date || '19000101';
+                return dateB.localeCompare(dateA);
+            });
+            
+            currentResults = allResults;
+            currentQueryInfo = {
+                pacs_count: selectedOptions.length,
+                total_results: allResults.length,
+                max_results_requested: maxResults,
+                search_criteria: {
+                    patient_name: patientName,
+                    patient_id: patientId,
+                    accession_number: accession,
+                    study_uid: studyUid,
+                    series_uid: seriesUid,
+                    days_ago: daysAgo
+                }
+            };
+            
+            addLogEntry('success', `All queries completed - Total: ${allResults.length} result(s) from ${selectedOptions.length} PACS server(s)`);
+            
+            displayResults(allResults, currentQueryInfo);
         }
     } catch (error) {
-        addLogEntry('error', `Network error: ${error.message}`);
-        displayError(`Network error: ${error.message}`);
+        addLogEntry('error', `Query error: ${error.message}`);
+        displayError(`Query error: ${error.message}`);
     } finally {
+        currentQueryController = null;
         submitBtn.innerHTML = originalContent;
         submitBtn.disabled = false;
     }
+}
+
+function cancelQuery() {
+    queryCancelled = true;
+    if (currentQueryController) {
+        currentQueryController.abort();
+    }
+    addLogEntry('warning', 'Cancelling queries...');
 }
 
 function displayResults(results, queryInfo) {
@@ -468,11 +585,14 @@ function displayResults(results, queryInfo) {
         const maxResultsInfo = queryInfo.max_results_requested ? 
             `<br><strong>Max Results:</strong> ${queryInfo.max_results_requested} (0 returned)` : '';
         
+        const pacsInfo = queryInfo.pacs_count > 1 ? 
+            `<br><strong>PACS Servers:</strong> ${queryInfo.pacs_count} servers queried` : '';
+        
         container.innerHTML = `
             <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i>
-                <strong>Query Results from ${queryInfo.pacs_name}</strong><br>
-                Found 0 result(s) at ${queryInfo.query_level} level${maxResultsInfo}<br>
+                <strong>Query Results</strong><br>
+                Found 0 result(s)${maxResultsInfo}${pacsInfo}<br>
                 <strong>Search Criteria:</strong> ${formatSearchCriteria(queryInfo.search_criteria)}
             </div>
             <div class="text-center py-4">
@@ -492,43 +612,58 @@ function displayResults(results, queryInfo) {
     const maxResultsInfo = queryInfo.max_results_requested ? 
         `<br><strong>Max Results:</strong> ${queryInfo.max_results_requested} (${results.length} returned)` : '';
     
+    const pacsInfo = queryInfo.pacs_count > 1 ? 
+        `<br><strong>PACS Servers:</strong> ${queryInfo.pacs_count} servers queried` : '';
+    
     const summaryHtml = `
         <div class="alert alert-info mb-3">
             <i class="fas fa-info-circle"></i>
-            <strong>Query Results from ${queryInfo.pacs_name}</strong><br>
-            Found ${results.length} result(s) at ${queryInfo.query_level} level${maxResultsInfo}<br>
+            <strong>Query Results</strong><br>
+            Found ${results.length} result(s)${maxResultsInfo}${pacsInfo}<br>
             <strong>Search Criteria:</strong> ${formatSearchCriteria(queryInfo.search_criteria)}
         </div>
     `;
     
-    // Create table
+    // Determine if we need PACS column (multiple PACS selected)
+    const hasMultiplePacs = results.some(result => result.pacs_name);
+    const pacsColumn = hasMultiplePacs ? '<th>PACS</th>' : '';
+    
+    // Create table with resizable columns
     const tableHtml = `
         <div class="table-responsive">
-            <table class="table table-striped table-hover" id="resultsTable">
+            <table class="table table-striped table-hover" id="resultsTable" style="table-layout: fixed;">
                 <thead class="table-dark">
                     <tr>
-                        <th>PATIENT NAME</th>
-                        <th>PATIENT ID</th>
-                        <th>DATE</th>
-                        <th>TIME</th>
-                        <th>STUDY DESCRIPTION</th>
-                        <th>ACCESSION</th>
-                        <th>MODALITY</th>
-                        <th>SERIES</th>
-                        <th>IMAGES</th>
-                        <th>STUDY UID</th>
+                        ${pacsColumn}
+                        <th style="width: 120px; min-width: 120px;">PATIENT NAME</th>
+                        <th style="width: 100px; min-width: 100px;">PATIENT ID</th>
+                        <th style="width: 80px; min-width: 80px;">DATE</th>
+                        <th style="width: 80px; min-width: 80px;">TIME</th>
+                        <th style="width: 200px; min-width: 150px;">STUDY DESCRIPTION</th>
+                        <th style="width: 120px; min-width: 100px;">ACCESSION</th>
+                        <th style="width: 80px; min-width: 80px;">MODALITY</th>
+                        <th style="width: 60px; min-width: 60px;">SERIES</th>
+                        <th style="width: 60px; min-width: 60px;">IMAGES</th>
+                        <th style="width: 200px; min-width: 150px;">STUDY UID</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${results.map((result, index) => `
                         <tr onclick="showStudyDetails(${index})" style="cursor: pointer;" 
                             title="Click to view detailed study information" data-bs-toggle="tooltip">
-                            <td>${result.patient_name || '-'}</td>
-                            <td>${result.patient_id || '-'}</td>
-                            <td>${result.study_date_formatted || result.study_date || '-'}</td>
-                            <td>${result.study_time || '-'}</td>
-                            <td>${result.study_description || '-'}</td>
-                            <td>${result.accession_number || '-'}</td>
+                            ${hasMultiplePacs ? `
+                                <td style="width: 80px; min-width: 80px;">
+                                    <span class="text-muted" title="${result.pacs_name || 'Unknown PACS'}">
+                                        ${result.pacs_short_name || result.pacs_name || '-'}
+                                    </span>
+                                </td>
+                            ` : ''}
+                            <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.patient_name || '-'}">${result.patient_name || '-'}</td>
+                            <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.patient_id || '-'}">${result.patient_id || '-'}</td>
+                            <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.study_date_formatted || result.study_date || '-'}">${result.study_date_formatted || result.study_date || '-'}</td>
+                            <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.study_time || '-'}">${result.study_time || '-'}</td>
+                            <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.study_description || '-'}">${result.study_description || '-'}</td>
+                            <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.accession_number || '-'}">${result.accession_number || '-'}</td>
                             <td>
                                 ${result.modality ? `<span class="badge bg-info">${result.modality}</span>` : '-'}
                             </td>
@@ -540,7 +675,7 @@ function displayResults(results, queryInfo) {
                             </td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <small class="text-muted font-monospace me-2">
+                                    <small class="text-muted font-monospace me-2" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                         ${result.study_uid ? result.study_uid.substring(0, 20) + '...' : '-'}
                                     </small>
                                     ${result.study_uid ? `
@@ -822,13 +957,25 @@ async function exportResults() {
     }
     
     try {
+        // Prepare results for export with full PACS names
+        const exportResults = currentResults.map(result => {
+            const exportResult = { ...result };
+            
+            // If we have PACS information, use full PACS name for export
+            if (result.pacs_name) {
+                exportResult.pacs_name = result.pacs_name;
+            }
+            
+            return exportResult;
+        });
+        
         const response = await fetch('/api/dicom/export/csv', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                results: currentResults,
+                results: exportResults,
                 query_info: currentQueryInfo
             })
         });
