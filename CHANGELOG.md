@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Recent Changes
 - **Version Bump**: Automated version bump to 1.1.0
+- **UID Copy Functionality**: Added copy-to-clipboard buttons for Study UIDs and Series UIDs throughout the interface
+- **Documentation Enhancement**: Added comprehensive screenshot documentation covering all major application features
 - **Change Summary**: This release includes recent improvements and bug fixes
 
 
