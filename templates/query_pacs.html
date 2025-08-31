@@ -289,10 +289,28 @@ async function loadPacsConfigs() {
                         }
                     });
                 }, 100);
+            } else {
+                // Fallback: add standard change event listener if tosijs is not available
+                select.addEventListener('change', function() {
+                    updateSelectedPacsHint();
+                });
             }
             
             // Update hint for initial selection
             updateSelectedPacsHint();
+            
+            // Add a more robust change detection for both tosijs and standard select
+            const select = document.getElementById('queryPacsSelect');
+            
+            // Listen for both change events and attribute changes (for tosijs)
+            select.addEventListener('change', function() {
+                setTimeout(() => updateSelectedPacsHint(), 50);
+            });
+            
+            // Also listen for clicks on the select to catch tosijs interactions
+            select.addEventListener('click', function() {
+                setTimeout(() => updateSelectedPacsHint(), 100);
+            });
             
         } else {
             select.innerHTML = '<option value="">No PACS configurations available</option>';
@@ -306,9 +324,9 @@ async function loadPacsConfigs() {
 function updateSelectedPacsHint(selectedValues = null) {
     const hint = document.getElementById('selectedPacsHint');
     const hintText = document.getElementById('selectedPacsText');
+    const select = document.getElementById('queryPacsSelect');
     
     if (!selectedValues) {
-        const select = document.getElementById('queryPacsSelect');
         // Try to get selected values from tosijs instance first
         if (window.tosijs && select.tosijsInstance) {
             selectedValues = select.tosijsInstance.getValue();
@@ -331,6 +349,9 @@ function updateSelectedPacsHint(selectedValues = null) {
         hint.style.display = 'block';
         hintText.textContent = `Selected ${selectedValues.length} PACS servers`;
     }
+    
+    // Debug logging
+    console.log('PACS selection updated:', selectedValues);
 }
 
 function clearCommandLog() {
