@@ -20,7 +20,7 @@
             <div class="card-body py-3">
                 <form id="pacsQueryForm">
                     <div class="row mb-2">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label for="queryPacsSelect" class="form-label small mb-1">Select PACS</label>
                             <select id="queryPacsSelect" class="form-select form-select-sm" multiple>
                                 <option value="">Loading...</option>
@@ -29,7 +29,7 @@
                                 <i class="fas fa-info-circle"></i> <span id="selectedPacsText"></span>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label for="daysAgo" class="form-label small mb-1">Date Range</label>
                             <select id="daysAgo" class="form-select form-select-sm">
                                 <option value="0">All dates</option>
@@ -39,9 +39,8 @@
                                 <option value="90">Last 90 days</option>
                                 <option value="365">Last year</option>
                             </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="maxResults" class="form-label small mb-1">
+                            
+                            <label for="maxResults" class="form-label small mb-1 mt-2">
                                 Max Results per PACS 
                                 <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
