@@ -42,13 +42,13 @@
                         </div>
                         <div class="col-md-4">
                             <label for="maxResults" class="form-label small mb-1">
-                                Maximum Results 
+                                Max Results per PACS 
                                 <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
-                                   title="Uses DICOM C-CANCEL to limit results, but some PACS servers may return more results than requested due to network buffering, query optimization, or incomplete C-CANCEL support."></i>
+                                   title="Maximum number of studies to return from each PACS server. Uses DICOM C-CANCEL to limit results, but some PACS servers may return more results than requested due to network buffering, query optimization, or incomplete C-CANCEL support."></i>
                             </label>
                             <input type="number" id="maxResults" class="form-control form-control-sm" value="100" min="1" max="1000" 
-                                   title="Approximate maximum number of studies to return (1-1000)">
+                                   title="Maximum number of studies to return from each PACS server (1-1000)">
                         </div>
                     </div>
                     
@@ -92,6 +92,7 @@
                                 <i class="fas fa-info-circle"></i>
                                 <strong>Tips:</strong> Leave fields empty to search all values. 
                                 Use wildcards (*) for partial matches. Combine criteria to narrow results.
+                                <br><small>Note: Max results limit applies to each PACS server individually.</small>
                             </div>
                         </div>
                     </div>
@@ -633,7 +634,7 @@ function displayResults(results, queryInfo) {
     
     if (results.length === 0) {
         const maxResultsInfo = queryInfo.max_results_requested ? 
-            `<br><strong>Max Results:</strong> ${queryInfo.max_results_requested} (0 returned)` : '';
+            `<br><strong>Max Results per PACS:</strong> ${queryInfo.max_results_requested} (0 total returned)` : '';
         
         const pacsInfo = queryInfo.pacs_count > 1 ? 
             `<br><strong>PACS Servers:</strong> ${queryInfo.pacs_count} servers queried` : '';
@@ -660,7 +661,7 @@ function displayResults(results, queryInfo) {
     
     // Create results summary
     const maxResultsInfo = queryInfo.max_results_requested ? 
-        `<br><strong>Max Results:</strong> ${queryInfo.max_results_requested} (${results.length} returned)` : '';
+        `<br><strong>Max Results per PACS:</strong> ${queryInfo.max_results_requested} (${results.length} total returned)` : '';
     
     const pacsInfo = queryInfo.pacs_count > 1 ? 
         `<br><strong>PACS Servers:</strong> ${queryInfo.pacs_count} servers queried` : '';
