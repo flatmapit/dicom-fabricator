@@ -7,7 +7,7 @@ A comprehensive DICOM study generation and management system built with Python a
 
 *For a detailed visual overview of features and common activities, see [Feature Overview](docs/feature_overview.md)*
 
-## 🚀 Features
+## Features
 
 - **HL7 ORM Integration**: Parse HL7 ORM messages and generate corresponding DICOM studies
 - **DICOM Generation**: Create synthetic DICOM files with realistic metadata
@@ -16,7 +16,7 @@ A comprehensive DICOM study generation and management system built with Python a
 - **Web Interface**: Modern Flask-based web application with Bootstrap UI
 - **Docker Support**: Easy deployment with Docker Compose for PACS servers
 
-## 🏗️ Architecture
+## Architecture
 
 - **Backend**: Python Flask application
 - **DICOM Processing**: pydicom library for DICOM manipulation
@@ -24,14 +24,14 @@ A comprehensive DICOM study generation and management system built with Python a
 - **Frontend**: HTML templates with Bootstrap 5 and JavaScript
 - **Database**: JSON-based storage for configurations and patient data
 
-## 📋 Prerequisites
+## Prerequisites
 
 - Python 3.8+ (3.11 recommended)
 - pyenv (recommended for Python version management)
 - DCMTK tools (findscu, storescu, movescu, echoscu, movescu)
 - Docker and Docker Compose (for PACS servers)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone the Repository
 
@@ -119,7 +119,7 @@ python app.py
 
 The application will be available at `http://localhost:5001`
 
-## 🔧 Configuration
+## Configuration
 
 ### PACS Configuration
 
@@ -151,7 +151,7 @@ Copy the sample patient configuration:
 cp data/patient_config.json.sample data/patient_config.json
 ```
 
-## 📖 Usage
+## Usage
 
 ### 1. Generate DICOM Studies
 
@@ -181,7 +181,7 @@ cp data/patient_config.json.sample data/patient_config.json
 3. Test connectivity
 4. View server status
 
-## 🏥 HL7 ORM Message Format
+## HL7 ORM Message Format
 
 The application expects HL7 ORM (Order Entry) messages. Key fields:
 
@@ -243,7 +243,7 @@ For detailed workflow information, see [Git Workflow Documentation](docs/GIT_WOR
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 This software is for **educational and testing purposes only**. It generates synthetic DICOM data and should not be used in production healthcare environments. Always ensure compliance with local healthcare regulations and data protection laws.
 

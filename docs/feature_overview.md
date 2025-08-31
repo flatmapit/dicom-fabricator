@@ -2,7 +2,7 @@
 
 This document provides a visual overview of the key features and common activities supported by DICOM Fabricator.
 
-## 🏠 Main Dashboard
+## Main Dashboard
 
 The main dashboard provides an overview of the system status and quick access to all major features.
 
@@ -14,7 +14,7 @@ The main dashboard provides an overview of the system status and quick access to
 - **Feature Cards**: Direct access to Patient Management, DICOM Generation, and DICOM Viewer
 - **Quick Actions**: Start generating DICOM studies or manage patients
 
-## 👥 Patient Management
+## Patient Management
 
 Create and manage synthetic patient records with realistic demographics.
 
@@ -27,7 +27,7 @@ Create and manage synthetic patient records with realistic demographics.
 - **Export Patient Lists**: Generate CSV exports of patient data
 - **Bulk Operations**: Perform actions on multiple patients
 
-## 🔧 DICOM Generation
+## DICOM Generation
 
 Generate synthetic DICOM studies from HL7 ORM messages or manual configuration.
 
@@ -40,7 +40,7 @@ Generate synthetic DICOM studies from HL7 ORM messages or manual configuration.
 - **Batch Generation**: Create multiple studies with different parameters
 - **Template Management**: Save and reuse study configurations
 
-## 📋 Generate Studies from ORM
+## Generate Studies from ORM
 
 Create DICOM studies directly from HL7 ORM messages with automatic parameter extraction.
 
@@ -53,7 +53,7 @@ Create DICOM studies directly from HL7 ORM messages with automatic parameter ext
 - **Study Creation**: Generate complete DICOM studies with proper metadata
 - **Validation**: Verify generated studies meet DICOM standards
 
-## 👁️ DICOM Viewer
+## DICOM Viewer
 
 View and analyze generated DICOM files with metadata display.
 
@@ -66,7 +66,7 @@ View and analyze generated DICOM files with metadata display.
 - **Search & Filter**: Find specific studies or series
 - **Export Options**: Download DICOM files or metadata
 
-## 🏥 PACS Integration
+## PACS Integration
 
 Manage PACS server connections and perform DICOM operations.
 
@@ -79,7 +79,7 @@ Manage PACS server connections and perform DICOM operations.
 - **Query Operations**: Search for studies on PACS servers
 - **C-MOVE Operations**: Transfer studies between PACS servers
 
-## 🔍 PACS Query
+## PACS Query
 
 Search and retrieve studies from connected PACS servers.
 
@@ -92,7 +92,7 @@ Search and retrieve studies from connected PACS servers.
 - **Study Retrieval**: Download studies from PACS servers
 - **Export Results**: Save query results in various formats
 
-## 🚀 Getting Started Workflow
+## Getting Started Workflow
 
 1. **Setup**: Configure PACS servers and patient data
 2. **Generate**: Create DICOM studies from HL7 messages or manual input

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2025-09-01
 
-### ✨ Feature Release
+### Feature Release
 
 #### Recent Changes
 - **Version Bump**: Automated version bump to 1.1.0
@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.2] - 2025-09-01
 
-### 🐛 Bug Fix Release
+### Bug Fix Release
 
 #### Recent Changes
 - **Version Bump**: Automated version bump to 1.0.2
@@ -108,7 +108,7 @@ The first public open-source release of DICOM Fabricator - a complete Flask web 
 - **PACS Page**: Configure and test PACS server connections with real-time status
 - **RESTful API**: Complete API with CORS support for all operations
 
-### 🛠️ Technical Infrastructure
+### Technical Infrastructure
 
 #### Backend Components
 - **Flask Web Application**: Complete RESTful API with comprehensive endpoints
@@ -128,7 +128,7 @@ The first public open-source release of DICOM Fabricator - a complete Flask web 
 - **Third-Party Licenses**: Full documentation of all dependency licenses
 - **API Documentation**: Complete endpoint documentation in CLAUDE.md
 
-### 🔧 Requirements
+### Requirements
 - Python 3.11+
 - Modern web browser for interface
 - Optional: Docker & Docker Compose for test PACS servers
@@ -159,7 +159,7 @@ DICOM_Fabricator/
 - Educational and training purposes
 - Quality assurance for system upgrades
 
-### ⚠️ Safety & Legal
+### Safety & Legal
 - All patient data is synthetic - no real PHI/PII
 - Generated files clearly marked as "TEST DATA"
 - Not for use in clinical environments
