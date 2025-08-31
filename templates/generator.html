@@ -2119,15 +2119,29 @@ function displayDicomMetadata(metadata) {
     
     // Display all DICOM tags sorted by tag ID (group, element)
     const allTags = Object.keys(metadata).sort((a, b) => {
-        // Extract group and element from tag strings like "0008,0020"
-        const [groupA, elementA] = a.split(',').map(x => parseInt(x, 16));
-        const [groupB, elementB] = b.split(',').map(x => parseInt(x, 16));
+        // Get the tag ID for each field name
+        const tagA = getStandardDicomTag(a);
+        const tagB = getStandardDicomTag(b);
         
-        // Sort by group first, then by element
-        if (groupA !== groupB) {
-            return groupA - groupB;
+        // Extract group and element from tag strings like "(0008,0020)"
+        const matchA = tagA.match(/\(([0-9A-Fa-f]{4}),([0-9A-Fa-f]{4})\)/);
+        const matchB = tagB.match(/\(([0-9A-Fa-f]{4}),([0-9A-Fa-f]{4})\)/);
+        
+        if (matchA && matchB) {
+            const groupA = parseInt(matchA[1], 16);
+            const elementA = parseInt(matchA[2], 16);
+            const groupB = parseInt(matchB[1], 16);
+            const elementB = parseInt(matchB[2], 16);
+            
+            // Sort by group first, then by element
+            if (groupA !== groupB) {
+                return groupA - groupB;
+            }
+            return elementA - elementB;
         }
-        return elementA - elementB;
+        
+        // Fallback to alphabetical sorting if tag parsing fails
+        return a.localeCompare(b);
     });
     const tagCount = allTags.length;
     
