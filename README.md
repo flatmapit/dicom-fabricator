@@ -2,6 +2,9 @@
 
 A comprehensive DICOM study generation and management system built with Python and Flask. This tool allows you to create synthetic DICOM studies from HL7 ORM messages, manage patient data, and integrate with PACS servers.
 
+![Dashboard Screenshot](docs/images/dashboard.png)
+
+
 *For a detailed visual overview of features and common activities, see [Feature Overview](docs/feature_overview.md)*
 
 ## 🚀 Features
