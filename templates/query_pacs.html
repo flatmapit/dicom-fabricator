@@ -465,11 +465,14 @@ function displayResults(results, queryInfo) {
     const exportBtn = document.getElementById('exportBtn');
     
     if (results.length === 0) {
+        const maxResultsInfo = queryInfo.max_results_requested ? 
+            `<br><strong>Max Results:</strong> ${queryInfo.max_results_requested} (0 returned)` : '';
+        
         container.innerHTML = `
             <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i>
                 <strong>Query Results from ${queryInfo.pacs_name}</strong><br>
-                Found 0 result(s) at ${queryInfo.query_level} level<br>
+                Found 0 result(s) at ${queryInfo.query_level} level${maxResultsInfo}<br>
                 <strong>Search Criteria:</strong> ${formatSearchCriteria(queryInfo.search_criteria)}
             </div>
             <div class="text-center py-4">
@@ -486,11 +489,14 @@ function displayResults(results, queryInfo) {
     exportBtn.style.display = 'inline-block';
     
     // Create results summary
+    const maxResultsInfo = queryInfo.max_results_requested ? 
+        `<br><strong>Max Results:</strong> ${queryInfo.max_results_requested} (${results.length} returned)` : '';
+    
     const summaryHtml = `
         <div class="alert alert-info mb-3">
             <i class="fas fa-info-circle"></i>
             <strong>Query Results from ${queryInfo.pacs_name}</strong><br>
-            Found ${results.length} result(s) at ${queryInfo.query_level} level<br>
+            Found ${results.length} result(s) at ${queryInfo.query_level} level${maxResultsInfo}<br>
             <strong>Search Criteria:</strong> ${formatSearchCriteria(queryInfo.search_criteria)}
         </div>
     `;

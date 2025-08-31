@@ -1943,11 +1943,9 @@ def query_pacs():
             pacs_config.host, str(pacs_config.port),
         ]
         
-        # Only add --cancel for PACS servers that support it
-        # Orthanc Test PACS 2 doesn't support --cancel properly
-        if pacs_config.name != "Orthanc Test PACS 2":
-            cmd.insert(3, '--cancel')
-            cmd.insert(4, str(max_results))
+        # Add --cancel parameter to limit results (supported by most PACS servers)
+        cmd.insert(3, '--cancel')
+        cmd.insert(4, str(max_results))
         
         # Add query level flag
         if query_level == 'STUDY':
@@ -1982,6 +1980,12 @@ def query_pacs():
             
             print(f"DEBUG: Parsed {len(studies)} studies from PACS response")
             
+            # Apply application-side result limiting as fallback
+            # This ensures we respect the max_results limit even if PACS doesn't support --cancel
+            if len(studies) > max_results:
+                print(f"DEBUG: PACS returned {len(studies)} results, limiting to {max_results}")
+                studies = studies[:max_results]
+            
             return jsonify({
                 'success': True,
                 'results': studies,
@@ -1989,6 +1993,7 @@ def query_pacs():
                     'pacs_name': pacs_config.name,
                     'query_level': query_level,
                     'total_results': len(studies),
+                    'max_results_requested': max_results,
                     'search_criteria': {
                         'patient_name': data.get('patient_name', ''),
                         'patient_id': data.get('patient_id', ''),
