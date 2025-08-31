@@ -539,7 +539,7 @@ function displayResults(results, queryInfo) {
                                     </small>
                                     ${result.study_uid ? `
                                         <button class="btn btn-sm btn-outline-secondary" 
-                                                onclick="copyToClipboard('${result.study_uid}', 'Study UID')"
+                                                onclick="copyToClipboard('${result.study_uid}', 'Study UID', event)"
                                                 title="Copy full Study UID to clipboard">
                                             <i class="fas fa-copy"></i>
                                         </button>
@@ -600,8 +600,8 @@ function formatSearchCriteria(criteria) {
     if (criteria.patient_name) parts.push(`Patient Name: ${criteria.patient_name}`);
     if (criteria.patient_id) parts.push(`Patient ID: ${criteria.patient_id}`);
     if (criteria.accession_number) parts.push(`Accession: ${criteria.accession_number}`);
-    if (criteria.study_uid) parts.push(`Study UID: ${criteria.study_uid.substring(0, 30)}... <button class="btn btn-sm btn-outline-secondary ms-1" onclick="copyToClipboard('${criteria.study_uid}', 'Study UID')" title="Copy full Study UID"><i class="fas fa-copy"></i></button>`);
-    if (criteria.series_uid) parts.push(`Series UID: ${criteria.series_uid.substring(0, 30)}... <button class="btn btn-sm btn-outline-secondary ms-1" onclick="copyToClipboard('${criteria.series_uid}', 'Series UID')" title="Copy full Series UID"><i class="fas fa-copy"></i></button>`);
+    if (criteria.study_uid) parts.push(`Study UID: ${criteria.study_uid.substring(0, 30)}... <button class="btn btn-sm btn-outline-secondary ms-1" onclick="copyToClipboard('${criteria.study_uid}', 'Study UID', event)" title="Copy full Study UID"><i class="fas fa-copy"></i></button>`);
+    if (criteria.series_uid) parts.push(`Series UID: ${criteria.series_uid.substring(0, 30)}... <button class="btn btn-sm btn-outline-secondary ms-1" onclick="copyToClipboard('${criteria.series_uid}', 'Series UID', event)" title="Copy full Series UID"><i class="fas fa-copy"></i></button>`);
     if (criteria.days_ago > 0) parts.push(`Date range: Last ${criteria.days_ago} days`);
     
     return parts.length > 0 ? parts.join(', ') : 'All studies';
@@ -682,7 +682,7 @@ async function showStudyDetails(index) {
                             </small>
                             ${study.study_uid ? `
                                 <button class="btn btn-sm btn-outline-secondary" 
-                                        onclick="copyToClipboard('${study.study_uid}', 'Study UID')"
+                                        onclick="copyToClipboard('${study.study_uid}', 'Study UID', event)"
                                         title="Copy full Study UID to clipboard">
                                     <i class="fas fa-copy"></i>
                                 </button>
@@ -727,9 +727,9 @@ async function showStudyDetails(index) {
                                                     ${series.series_uid ? series.series_uid.substring(0, 25) + '...' : '-'}
                                                 </small>
                                                 ${series.series_uid ? `
-                                                    <button class="btn btn-sm btn-outline-secondary" 
-                                                            onclick="copyToClipboard('${series.series_uid}', 'Series UID')"
-                                                            title="Copy full Series UID to clipboard">
+                                                                                                    <button class="btn btn-sm btn-outline-secondary" 
+                                                        onclick="copyToClipboard('${series.series_uid}', 'Series UID', event)"
+                                                        title="Copy full Series UID to clipboard">
                                                         <i class="fas fa-copy"></i>
                                                     </button>
                                                 ` : ''}
@@ -995,7 +995,13 @@ async function executeCMove() {
 }
 
 // Utility function to copy text to clipboard
-async function copyToClipboard(text, label) {
+async function copyToClipboard(text, label, event) {
+    // Prevent event from bubbling up to the row
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    
     try {
         await navigator.clipboard.writeText(text);
         
@@ -1031,8 +1037,8 @@ async function copyToClipboard(text, label) {
         const button = event.target.closest('button');
         const originalContent = button.innerHTML;
         button.innerHTML = '<i class="fas fa-check"></i>';
-        button.classList.remove('btn-outline-secondary');
-        button.classList.add('btn-success');
+        button.classList.remove('btn-success');
+        button.classList.add('btn-outline-secondary');
         
         addLogEntry('success', `Copied ${label} to clipboard (fallback method)`);
         
