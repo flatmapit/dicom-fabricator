@@ -14,6 +14,8 @@ import csv
 from pathlib import Path
 from datetime import datetime
 import io
+import threading
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
@@ -37,6 +39,40 @@ pacs_manager = PacsConfigManager()
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+def auto_test_pacs_connections():
+    """Automatically test all PACS connections every 10 minutes"""
+    while True:
+        try:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Auto-testing PACS connections...")
+            
+            # Get all active PACS configurations
+            configs = pacs_manager.list_configs(active_only=True)
+            
+            for config in configs:
+                try:
+                    print(f"  Testing {config.name} ({config.aec}@{config.host}:{config.port})...")
+                    result = pacs_manager.test_connection(config.id)
+                    
+                    if result['success']:
+                        print(f"    ✓ {config.name}: Connection successful")
+                    else:
+                        print(f"    ✗ {config.name}: {result.get('error', 'Connection failed')}")
+                        
+                except Exception as e:
+                    print(f"    ✗ {config.name}: Error during testing - {str(e)}")
+            
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Auto-testing completed")
+            
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error in auto-testing: {str(e)}")
+        
+        # Wait 10 minutes (600 seconds) before next test
+        time.sleep(600)
+
+# Start automatic PACS testing in background thread
+pacs_testing_thread = threading.Thread(target=auto_test_pacs_connections, daemon=True)
+pacs_testing_thread.start()
 
 @app.route('/')
 def index():

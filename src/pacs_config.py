@@ -259,10 +259,35 @@ class PacsConfigManager:
         tested = len([c for c in self.configs.values() if c.last_tested])
         successful = len([c for c in self.configs.values() if c.test_status == "success"])
         
+        # Find the most recent test time
+        last_test_times = [c.last_tested for c in self.configs.values() if c.last_tested]
+        last_test_time = max(last_test_times) if last_test_times else None
+        
+        # Calculate time since last test
+        time_since_last_test = None
+        if last_test_time:
+            try:
+                from datetime import datetime
+                last_test_dt = datetime.fromisoformat(last_test_time.replace('Z', '+00:00'))
+                now = datetime.now()
+                time_diff = now - last_test_dt
+                if time_diff.total_seconds() < 60:
+                    time_since_last_test = "just now"
+                elif time_diff.total_seconds() < 3600:
+                    minutes = int(time_diff.total_seconds() / 60)
+                    time_since_last_test = f"{minutes}m ago"
+                else:
+                    hours = int(time_diff.total_seconds() / 3600)
+                    time_since_last_test = f"{hours}h ago"
+            except:
+                time_since_last_test = "recently"
+        
         return {
             "total_configs": total,
             "active_configs": active,
             "tested_configs": tested,
             "successful_tests": successful,
-            "default_config": self.get_default_config().name if self.get_default_config() else None
+            "default_config": self.get_default_config().name if self.get_default_config() else None,
+            "last_test_time": last_test_time,
+            "time_since_last_test": time_since_last_test
         }
