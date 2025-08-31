@@ -1950,6 +1950,8 @@ def query_pacs():
         # Add query level flag
         if query_level == 'STUDY':
             cmd.append('-S')  # Study level query flag
+        elif query_level == 'SERIES':
+            cmd.append('-P')  # Patient root information model for series-level queries
         
         cmd.extend(search_params)
         
