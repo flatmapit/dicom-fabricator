@@ -11,27 +11,27 @@
 </div>
 
 <!-- Query Form -->
-<div class="row mb-4">
+<div class="row mb-3">
     <div class="col-xl-9">
         <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-search"></i> Query PACS</h5>
+            <div class="card-header py-2">
+                <h6 class="mb-0"><i class="fas fa-search"></i> Query PACS</h6>
             </div>
-            <div class="card-body">
+            <div class="card-body py-3">
                 <form id="pacsQueryForm">
-                    <div class="row mb-3">
+                    <div class="row mb-2">
                         <div class="col-md-4">
-                            <label for="queryPacsSelect" class="form-label">Select PACS</label>
-                            <select id="queryPacsSelect" class="form-select" multiple>
+                            <label for="queryPacsSelect" class="form-label small mb-1">Select PACS</label>
+                            <select id="queryPacsSelect" class="form-select form-select-sm" multiple>
                                 <option value="">Loading...</option>
                             </select>
-                            <div id="selectedPacsHint" class="form-text mt-1" style="display: none;">
+                            <div id="selectedPacsHint" class="form-text mt-1" style="display: none; font-size: 0.75rem;">
                                 <i class="fas fa-info-circle"></i> <span id="selectedPacsText"></span>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <label for="daysAgo" class="form-label">Date Range</label>
-                            <select id="daysAgo" class="form-select">
+                            <label for="daysAgo" class="form-label small mb-1">Date Range</label>
+                            <select id="daysAgo" class="form-select form-select-sm">
                                 <option value="0">All dates</option>
                                 <option value="1">Last 1 day</option>
                                 <option value="7">Last 7 days</option>
@@ -41,54 +41,54 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label for="maxResults" class="form-label">
+                            <label for="maxResults" class="form-label small mb-1">
                                 Maximum Results 
                                 <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
                                    title="Uses DICOM C-CANCEL to limit results, but some PACS servers may return more results than requested due to network buffering, query optimization, or incomplete C-CANCEL support."></i>
                             </label>
-                            <input type="number" id="maxResults" class="form-control" value="100" min="1" max="1000" 
+                            <input type="number" id="maxResults" class="form-control form-control-sm" value="100" min="1" max="1000" 
                                    title="Approximate maximum number of studies to return (1-1000)">
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="patientNameQuery" class="form-label">Patient Name</label>
-                                <input type="text" class="form-control" id="patientNameQuery" 
+                            <div class="mb-2">
+                                <label for="patientNameQuery" class="form-label small mb-1">Patient Name</label>
+                                <input type="text" class="form-control form-control-sm" id="patientNameQuery" 
                                        placeholder="e.g., SMITH^JOHN or *SMITH*">
-                                <div class="form-text">Supports wildcards: * and ?</div>
+                                <div class="form-text small">Supports wildcards: * and ?</div>
                             </div>
                             
-                            <div class="mb-3">
-                                <label for="patientIdQuery" class="form-label">Patient ID</label>
-                                <input type="text" class="form-control" id="patientIdQuery" 
+                            <div class="mb-2">
+                                <label for="patientIdQuery" class="form-label small mb-1">Patient ID</label>
+                                <input type="text" class="form-control form-control-sm" id="patientIdQuery" 
                                        placeholder="e.g., PID12345">
                             </div>
                             
-                            <div class="mb-3">
-                                <label for="accessionQuery" class="form-label">Accession Number</label>
-                                <input type="text" class="form-control" id="accessionQuery" 
+                            <div class="mb-2">
+                                <label for="accessionQuery" class="form-label small mb-1">Accession Number</label>
+                                <input type="text" class="form-control form-control-sm" id="accessionQuery" 
                                        placeholder="e.g., ACC001">
                             </div>
                         </div>
                         
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="studyUidQuery" class="form-label">Study Instance UID</label>
-                                <input type="text" class="form-control" id="studyUidQuery" 
+                            <div class="mb-2">
+                                <label for="studyUidQuery" class="form-label small mb-1">Study Instance UID</label>
+                                <input type="text" class="form-control form-control-sm" id="studyUidQuery" 
                                        placeholder="e.g., 1.2.826.0.1.3680043.8.498.1...">
                             </div>
                             
-                            <div class="mb-3">
-                                <label for="seriesUidQuery" class="form-label">Series Instance UID</label>
-                                <input type="text" class="form-control" id="seriesUidQuery" 
+                            <div class="mb-2">
+                                <label for="seriesUidQuery" class="form-label small mb-1">Series Instance UID</label>
+                                <input type="text" class="form-control form-control-sm" id="seriesUidQuery" 
                                        placeholder="e.g., 1.2.826.0.1.3680043.8.498.2...">
-                                <div class="form-text">Will switch to series-level query</div>
+                                <div class="form-text small">Will switch to series-level query</div>
                             </div>
                             
-                            <div class="alert alert-info mb-0">
+                            <div class="alert alert-info mb-0 py-2" style="font-size: 0.8rem;">
                                 <i class="fas fa-info-circle"></i>
                                 <strong>Tips:</strong> Leave fields empty to search all values. 
                                 Use wildcards (*) for partial matches. Combine criteria to narrow results.
@@ -96,9 +96,9 @@
                         </div>
                     </div>
                     
-                    <div class="row mt-3">
+                    <div class="row mt-2">
                         <div class="col-12 text-end">
-                            <button type="submit" class="btn btn-primary btn-lg">
+                            <button type="submit" class="btn btn-primary btn-sm">
                                 <i class="fas fa-search"></i> Query PACS
                             </button>
                         </div>
@@ -629,7 +629,7 @@ function displayResults(results, queryInfo) {
     // Show export button
     exportBtn.style.display = 'inline-block';
     
-    // Create results summary with density controls
+    // Create results summary
     const maxResultsInfo = queryInfo.max_results_requested ? 
         `<br><strong>Max Results:</strong> ${queryInfo.max_results_requested} (${results.length} returned)` : '';
     
@@ -638,30 +638,10 @@ function displayResults(results, queryInfo) {
     
     const summaryHtml = `
         <div class="alert alert-info mb-3">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <i class="fas fa-info-circle"></i>
-                    <strong>Query Results</strong><br>
-                    Found ${results.length} result(s)${maxResultsInfo}${pacsInfo}<br>
-                    <strong>Search Criteria:</strong> ${formatSearchCriteria(queryInfo.search_criteria)}
-                </div>
-                <div class="ms-3">
-                    <div class="btn-group btn-group-sm" role="group" aria-label="Table density">
-                        <button type="button" class="btn btn-outline-secondary" onclick="setTableDensity('compact')" title="Compact view">
-                            <i class="fas fa-compress-alt"></i> Compact
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary active" onclick="setTableDensity('normal')" title="Normal view">
-                            <i class="fas fa-table"></i> Normal
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="setTableDensity('dense')" title="Dense view">
-                            <i class="fas fa-compress"></i> Dense
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="setTableDensity('ultra-dense')" title="Ultra dense view">
-                            <i class="fas fa-compress-arrows-alt"></i> Ultra
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <i class="fas fa-info-circle"></i>
+            <strong>Query Results</strong><br>
+            Found ${results.length} result(s)${maxResultsInfo}${pacsInfo}<br>
+            <strong>Search Criteria:</strong> ${formatSearchCriteria(queryInfo.search_criteria)}
         </div>
     `;
     
@@ -672,7 +652,7 @@ function displayResults(results, queryInfo) {
     // Create table with resizable columns
     const tableHtml = `
         <div class="table-responsive">
-            <table class="table table-striped table-hover table-sm" id="resultsTable" style="table-layout: fixed; font-size: 0.85rem;">
+            <table class="table table-striped table-hover table-sm" id="resultsTable" style="table-layout: fixed; font-size: 0.8rem;">
                 <thead class="table-dark">
                     <tr>
                         ${pacsColumn}
@@ -693,7 +673,7 @@ function displayResults(results, queryInfo) {
                         <tr onclick="showStudyDetails(${index})" style="cursor: pointer;" 
                             title="Click to view detailed study information" data-bs-toggle="tooltip">
                             ${hasMultiplePacs ? `
-                                <td style="width: 45px; min-width: 45px;">
+                                <td style="width: 15px; min-width: 15px;">
                                     <span class="text-muted" title="${result.pacs_name || 'Unknown PACS'}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">
                                         ${result.pacs_short_name || result.pacs_name || '-'}
                                     </span>
@@ -737,8 +717,8 @@ function displayResults(results, queryInfo) {
     
     container.innerHTML = summaryHtml + tableHtml;
     
-    // Add density CSS styles
-    addDensityStyles();
+    // Add compact CSS styles
+    addCompactStyles();
     
     // Initialize tosijs for sorting and pagination
     if (window.tosijs) {
@@ -1247,120 +1227,32 @@ async function copyToClipboard(text, label, event) {
     }
 }
 
-// Table density control functions
-function addDensityStyles() {
-    if (!document.getElementById('density-styles')) {
+// Compact table styling function
+function addCompactStyles() {
+    if (!document.getElementById('compact-styles')) {
         const style = document.createElement('style');
-        style.id = 'density-styles';
+        style.id = 'compact-styles';
         style.textContent = `
-            /* Compact density */
-            .table-density-compact {
-                font-size: 0.8rem !important;
-            }
-            .table-density-compact .table {
+            /* Compact table styling */
+            #queryResults .table {
                 margin-bottom: 0.5rem;
             }
-            .table-density-compact .table td,
-            .table-density-compact .table th {
+            #queryResults .table td,
+            #queryResults .table th {
                 padding: 0.3rem 0.5rem;
                 vertical-align: middle;
             }
-            .table-density-compact .badge {
+            #queryResults .badge {
                 font-size: 0.65rem;
                 padding: 0.2rem 0.4rem;
             }
-            .table-density-compact .btn-sm {
+            #queryResults .btn-sm {
                 padding: 0.1rem 0.3rem;
                 font-size: 0.65rem;
-            }
-            
-            /* Dense density */
-            .table-density-dense {
-                font-size: 0.75rem !important;
-            }
-            .table-density-dense .table {
-                margin-bottom: 0.3rem;
-            }
-            .table-density-dense .table td,
-            .table-density-dense .table th {
-                padding: 0.2rem 0.4rem;
-                vertical-align: middle;
-            }
-            .table-density-dense .badge {
-                font-size: 0.6rem;
-                padding: 0.15rem 0.3rem;
-            }
-            .table-density-dense .btn-sm {
-                padding: 0.05rem 0.25rem;
-                font-size: 0.6rem;
-            }
-            
-            /* Ultra dense density */
-            .table-density-ultra-dense {
-                font-size: 0.7rem !important;
-            }
-            .table-density-ultra-dense .table {
-                margin-bottom: 0.2rem;
-            }
-            .table-density-ultra-dense .table td,
-            .table-density-ultra-dense .table th {
-                padding: 0.15rem 0.3rem;
-                vertical-align: middle;
-                line-height: 1.1;
-            }
-            .table-density-ultra-dense .badge {
-                font-size: 0.55rem;
-                padding: 0.1rem 0.25rem;
-            }
-            .table-density-ultra-dense .btn-sm {
-                padding: 0.05rem 0.2rem;
-                font-size: 0.55rem;
-            }
-            .table-density-ultra-dense .table-responsive {
-                max-height: 70vh;
-                overflow-y: auto;
             }
         `;
         document.head.appendChild(style);
     }
 }
-
-function setTableDensity(density) {
-    const container = document.getElementById('queryResults');
-    const table = container.querySelector('#resultsTable');
-    
-    // Remove all density classes
-    container.classList.remove('table-density-compact', 'table-density-dense', 'table-density-ultra-dense');
-    
-    // Add selected density class
-    if (density !== 'normal') {
-        container.classList.add(`table-density-${density}`);
-    }
-    
-    // Update button states
-    const buttons = container.querySelectorAll('.btn-group .btn');
-    buttons.forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.onclick.toString().includes(density)) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // Store preference
-    localStorage.setItem('table-density-preference', density);
-    
-    // Add log entry
-    addLogEntry('info', `Switched to ${density} table density`);
-}
-
-// Load density preference on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const savedDensity = localStorage.getItem('table-density-preference');
-    if (savedDensity && savedDensity !== 'normal') {
-        setTimeout(() => {
-            setTableDensity(savedDensity);
-        }, 100);
-    }
-});
 </script>
 {% endblock %}
