@@ -309,8 +309,17 @@ function updateSelectedPacsHint(selectedValues = null) {
     
     if (!selectedValues) {
         const select = document.getElementById('queryPacsSelect');
-        selectedValues = Array.from(select.selectedOptions).map(option => option.value);
+        // Try to get selected values from tosijs instance first
+        if (window.tosijs && select.tosijsInstance) {
+            selectedValues = select.tosijsInstance.getValue();
+        } else {
+            // Fallback to standard selectedOptions
+            selectedValues = Array.from(select.selectedOptions).map(option => option.value);
+        }
     }
+    
+    // Filter out empty values
+    selectedValues = selectedValues.filter(value => value && value !== '');
     
     if (selectedValues.length === 0) {
         hint.style.display = 'none';
@@ -408,7 +417,19 @@ let queryCancelled = false;
 let currentQueryController = null;
 
 async function queryPacs() {
-    const selectedOptions = document.getElementById('queryPacsSelect').selectedOptions;
+    const select = document.getElementById('queryPacsSelect');
+    let selectedOptions;
+    
+    // Try to get selected options from tosijs instance first
+    if (window.tosijs && select.tosijsInstance) {
+        const selectedValues = select.tosijsInstance.getValue();
+        selectedOptions = Array.from(select.options).filter(option => 
+            selectedValues.includes(option.value)
+        );
+    } else {
+        // Fallback to standard selectedOptions
+        selectedOptions = select.selectedOptions;
+    }
     const patientName = document.getElementById('patientNameQuery').value.trim();
     const patientId = document.getElementById('patientIdQuery').value.trim();
     const accession = document.getElementById('accessionQuery').value.trim();
