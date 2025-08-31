@@ -40,6 +40,19 @@ Generate synthetic DICOM studies from HL7 ORM messages or manual configuration.
 - **Batch Generation**: Create multiple studies with different parameters
 - **Template Management**: Save and reuse study configurations
 
+## 📋 Generate Studies from ORM
+
+Create DICOM studies directly from HL7 ORM messages with automatic parameter extraction.
+
+![Generate Studies from ORM](images/generate-studies-from-orm.png)
+
+**Common Activities:**
+- **Paste ORM Message**: Input HL7 ORM messages directly into the interface
+- **Automatic Parsing**: Extract patient demographics and study parameters
+- **Parameter Review**: Review and edit extracted parameters before generation
+- **Study Creation**: Generate complete DICOM studies with proper metadata
+- **Validation**: Verify generated studies meet DICOM standards
+
 ## 👁️ DICOM Viewer
 
 View and analyze generated DICOM files with metadata display.
@@ -79,19 +92,6 @@ Search and retrieve studies from connected PACS servers.
 - **Study Retrieval**: Download studies from PACS servers
 - **Export Results**: Save query results in various formats
 
-## 📊 System Monitoring
-
-Monitor system performance and activity.
-
-![System Monitoring](images/system-monitoring.png)
-
-**Common Activities:**
-- **Performance Metrics**: View system usage and performance data
-- **Activity Logs**: Monitor user actions and system events
-- **Error Tracking**: Identify and resolve system issues
-- **Resource Usage**: Monitor disk space and memory usage
-- **Health Checks**: Verify system components are functioning
-
 ## 🚀 Getting Started Workflow
 
 1. **Setup**: Configure PACS servers and patient data
@@ -100,18 +100,6 @@ Monitor system performance and activity.
 4. **Transfer**: Send studies to PACS servers for testing
 5. **Query**: Search and retrieve studies from PACS servers
 
-## 📱 Responsive Design
-
-All features are designed to work seamlessly across desktop, tablet, and mobile devices.
-
-![Responsive Design](images/responsive-design.png)
-
-**Key Features:**
-- **Mobile-Optimized**: Touch-friendly interface for mobile devices
-- **Adaptive Layout**: Automatic adjustment for different screen sizes
-- **Progressive Enhancement**: Core functionality works on all devices
-- **Accessibility**: Support for screen readers and keyboard navigation
-
 ---
 
-*Note: Screenshots will be added as the application is developed and tested. This document serves as a template for the visual feature overview.*
+*This document provides a visual overview of the key features and common activities supported by DICOM Fabricator.*

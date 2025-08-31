@@ -13,8 +13,7 @@ The following screenshots need to be captured and added to this directory:
 - `dicom-viewer.png` - DICOM viewer showing file browser and metadata display
 - `pacs-management.png` - PACS server management and configuration interface
 - `pacs-query.png` - PACS query interface with search filters and results
-- `system-monitoring.png` - System monitoring and performance metrics
-- `responsive-design.png` - Application running on mobile/tablet devices
+- `generate-studies-from-orm.png` - generating studies based on a pasted ORM
 
 ## Screenshot Guidelines
 
@@ -33,13 +32,4 @@ The following screenshots need to be captured and added to this directory:
 5. Crop and optimize images as needed
 6. Add to this directory with the specified filenames
 
-## Current Status
 
-- [ ] Dashboard screenshot
-- [ ] Patient management screenshot  
-- [ ] DICOM generation screenshot
-- [ ] DICOM viewer screenshot
-- [ ] PACS management screenshot
-- [ ] PACS query screenshot
-- [ ] System monitoring screenshot
-- [ ] Responsive design screenshot
