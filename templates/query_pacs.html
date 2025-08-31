@@ -693,9 +693,9 @@ function displayResults(results, queryInfo) {
                         <tr onclick="showStudyDetails(${index})" style="cursor: pointer;" 
                             title="Click to view detailed study information" data-bs-toggle="tooltip">
                             ${hasMultiplePacs ? `
-                                <td style="width: 60px; min-width: 60px;">
-                                    <span class="text-muted" title="${result.pacs_name || 'Unknown PACS'}">
-                                        ${(result.pacs_short_name || result.pacs_name || '-').substring(0, 8)}
+                                <td style="width: 45px; min-width: 45px;">
+                                    <span class="text-muted" title="${result.pacs_name || 'Unknown PACS'}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;">
+                                        ${result.pacs_short_name || result.pacs_name || '-'}
                                     </span>
                                 </td>
                             ` : ''}
