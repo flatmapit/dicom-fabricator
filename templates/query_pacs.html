@@ -652,20 +652,20 @@ function displayResults(results, queryInfo) {
     // Create table with resizable columns
     const tableHtml = `
         <div class="table-responsive">
-            <table class="table table-striped table-hover" id="resultsTable" style="table-layout: fixed;">
+            <table class="table table-striped table-hover table-sm" id="resultsTable" style="table-layout: fixed; font-size: 0.85rem;">
                 <thead class="table-dark">
                     <tr>
                         ${pacsColumn}
-                        <th style="width: 120px; min-width: 120px;">PATIENT NAME</th>
-                        <th style="width: 100px; min-width: 100px;">PATIENT ID</th>
-                        <th style="width: 80px; min-width: 80px;">DATE</th>
-                        <th style="width: 80px; min-width: 80px;">TIME</th>
-                        <th style="width: 200px; min-width: 150px;">STUDY DESCRIPTION</th>
-                        <th style="width: 120px; min-width: 100px;">ACCESSION</th>
-                        <th style="width: 80px; min-width: 80px;">MODALITY</th>
-                        <th style="width: 60px; min-width: 60px;">SERIES</th>
-                        <th style="width: 60px; min-width: 60px;">IMAGES</th>
-                        <th style="width: 200px; min-width: 150px;">STUDY UID</th>
+                        <th style="width: 140px; min-width: 140px;">PATIENT NAME</th>
+                        <th style="width: 110px; min-width: 110px;">PATIENT ID</th>
+                        <th style="width: 90px; min-width: 90px;">DATE</th>
+                        <th style="width: 70px; min-width: 70px;">TIME</th>
+                        <th style="width: 180px; min-width: 150px;">STUDY DESCRIPTION</th>
+                        <th style="width: 130px; min-width: 130px;">ACCESSION</th>
+                        <th style="width: 70px; min-width: 70px;">MODALITY</th>
+                        <th style="width: 50px; min-width: 50px;">SERIES</th>
+                        <th style="width: 50px; min-width: 50px;">IMAGES</th>
+                        <th style="width: 180px; min-width: 150px;">STUDY UID</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -673,9 +673,9 @@ function displayResults(results, queryInfo) {
                         <tr onclick="showStudyDetails(${index})" style="cursor: pointer;" 
                             title="Click to view detailed study information" data-bs-toggle="tooltip">
                             ${hasMultiplePacs ? `
-                                <td style="width: 80px; min-width: 80px;">
-                                    <span class="text-muted" title="${result.pacs_name || 'Unknown PACS'}">
-                                        ${result.pacs_short_name || result.pacs_name || '-'}
+                                <td style="width: 60px; min-width: 60px;">
+                                    <span class="text-muted small" title="${result.pacs_name || 'Unknown PACS'}">
+                                        ${(result.pacs_short_name || result.pacs_name || '-').substring(0, 8)}
                                     </span>
                                 </td>
                             ` : ''}
@@ -686,24 +686,24 @@ function displayResults(results, queryInfo) {
                             <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.study_description || '-'}">${result.study_description || '-'}</td>
                             <td style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${result.accession_number || '-'}">${result.accession_number || '-'}</td>
                             <td>
-                                ${result.modality ? `<span class="badge bg-info">${result.modality}</span>` : '-'}
+                                ${result.modality ? `<span class="badge bg-info badge-sm">${result.modality}</span>` : '-'}
                             </td>
                             <td>
-                                ${result.series_count ? `<span class="badge bg-primary">${result.series_count}</span>` : '-'}
+                                ${result.series_count ? `<span class="badge bg-primary badge-sm">${result.series_count}</span>` : '-'}
                             </td>
                             <td>
-                                ${result.instance_count ? `<span class="badge bg-secondary">${result.instance_count}</span>` : '-'}
+                                ${result.instance_count ? `<span class="badge bg-secondary badge-sm">${result.instance_count}</span>` : '-'}
                             </td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <small class="text-muted font-monospace me-2" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                        ${result.study_uid ? result.study_uid.substring(0, 20) + '...' : '-'}
+                                    <small class="text-muted font-monospace me-1" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        ${result.study_uid ? result.study_uid.substring(0, 18) + '...' : '-'}
                                     </small>
                                     ${result.study_uid ? `
-                                        <button class="btn btn-sm btn-outline-secondary" 
+                                        <button class="btn btn-sm btn-outline-secondary btn-sm" 
                                                 onclick="copyToClipboard('${result.study_uid}', 'Study UID', event)"
                                                 title="Copy full Study UID to clipboard">
-                                            <i class="fas fa-copy"></i>
+                                            <i class="fas fa-copy fa-xs"></i>
                                         </button>
                                     ` : ''}
                                 </div>
