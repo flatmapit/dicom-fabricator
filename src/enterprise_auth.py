@@ -13,9 +13,14 @@ from dataclasses import dataclass
 from urllib.parse import urlparse, parse_qs
 import requests
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE, ANONYMOUS
-from onelogin.saml2.auth import OneLogin_Saml2_Auth
-from onelogin.saml2.utils import OneLogin_Saml2_Utils
-from onelogin.saml2.settings import OneLogin_Saml2_Settings
+try:
+    from onelogin.saml2.auth import OneLogin_Saml2_Auth
+    from onelogin.saml2.utils import OneLogin_Saml2_Utils
+    from onelogin.saml2.settings import OneLogin_Saml2_Settings
+    SAML_AVAILABLE = True
+except ImportError:
+    SAML_AVAILABLE = False
+    print("Warning: SAML dependencies not installed. SAML authentication will not be available.")
 from flask import request, session, redirect, url_for, flash, current_app
 import xml.etree.ElementTree as ET
 
@@ -305,6 +310,9 @@ class EnterpriseAuthManager:
     
     def initiate_saml_login(self) -> str:
         """Initiate SAML login and return redirect URL"""
+        if not SAML_AVAILABLE:
+            raise ValueError("SAML dependencies not installed")
+        
         if not self.saml_config:
             raise ValueError("SAML not configured")
         
@@ -323,6 +331,9 @@ class EnterpriseAuthManager:
     
     def process_saml_response(self, saml_response: str) -> Optional[Dict]:
         """Process SAML response and extract user information"""
+        if not SAML_AVAILABLE:
+            return None
+        
         if not self.saml_config:
             return None
         

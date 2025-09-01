@@ -32,6 +32,14 @@ import numpy as np
 app = Flask(__name__)
 CORS(app)
 
+# Add security headers to prevent frame embedding
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
+
 # Session configuration
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -115,6 +123,7 @@ pacs_testing_thread = threading.Thread(target=auto_test_pacs_connections, daemon
 pacs_testing_thread.start()
 
 @app.route('/')
+@login_required
 def index():
     # Update user activity
     update_user_activity()
@@ -123,6 +132,7 @@ def index():
                          current_user=get_current_user())
 
 @app.route('/patients')
+@login_required
 def patients_page():
     # Update user activity
     update_user_activity()
@@ -131,6 +141,7 @@ def patients_page():
                          current_user=get_current_user())
 
 @app.route('/generator')
+@login_required
 def generator_page():
     # Update user activity
     update_user_activity()
@@ -140,6 +151,7 @@ def generator_page():
 
 
 @app.route('/pacs')
+@login_required
 def pacs_page():
     # Update user activity
     update_user_activity()
@@ -148,10 +160,21 @@ def pacs_page():
                          current_user=get_current_user())
 
 @app.route('/query-pacs')
+@login_required
 def query_pacs_page():
     # Update user activity
     update_user_activity()
     return render_template('query_pacs.html',
+                         auth_enabled=auth_manager.is_auth_enabled(),
+                         current_user=get_current_user())
+
+@app.route('/users')
+@login_required
+@permission_required('system_admin')
+def users_page():
+    # Update user activity
+    update_user_activity()
+    return render_template('users.html',
                          auth_enabled=auth_manager.is_auth_enabled(),
                          current_user=get_current_user())
 
@@ -285,7 +308,115 @@ def auth_status():
         'user_permissions': get_current_user().permissions if get_current_user() else []
     })
 
+# User Management API Endpoints
+@app.route('/api/users', methods=['GET'])
+@login_required
+@permission_required('system_admin')
+def get_users():
+    """Get all users"""
+    users = []
+    for username, user in auth_manager.users.items():
+        users.append({
+            'username': user.username,
+            'email': user.email,
+            'role': user.role,
+            'permissions': user.permissions,
+            'created_at': getattr(user, 'created_at', None),
+            'last_login': getattr(user, 'last_login', None)
+        })
+    return jsonify({'users': users})
+
+@app.route('/api/users', methods=['POST'])
+@login_required
+@permission_required('system_admin')
+def create_user():
+    """Create a new user"""
+    data = request.json
+    
+    username = data.get('username')
+    email = data.get('email', '')
+    password = data.get('password')
+    role = data.get('role')
+    permissions = data.get('permissions', [])
+    
+    if not username or not password or not role:
+        return jsonify({'success': False, 'message': 'Username, password, and role are required'}), 400
+    
+    if username in auth_manager.users:
+        return jsonify({'success': False, 'message': 'Username already exists'}), 400
+    
+    # Create new user
+    from src.auth import User
+    new_user = User(
+        username=username,
+        password_hash='',  # Will be set by set_password
+        email=email,
+        role=role,
+        permissions=permissions
+    )
+    
+    # Set password
+    new_user.set_password(password)
+    
+    # Add to auth manager
+    auth_manager.users[username] = new_user
+    auth_manager.save_users()
+    
+    return jsonify({'success': True, 'message': f'User {username} created successfully'})
+
+@app.route('/api/users/<username>', methods=['PUT'])
+@login_required
+@permission_required('system_admin')
+def update_user(username):
+    """Update an existing user"""
+    data = request.json
+    
+    if username not in auth_manager.users:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+    
+    user = auth_manager.users[username]
+    
+    # Update fields
+    if 'email' in data:
+        user.email = data['email']
+    if 'role' in data:
+        user.role = data['role']
+    if 'permissions' in data:
+        user.permissions = data['permissions']
+    
+    # Update password if provided
+    if data.get('password'):
+        user.set_password(data['password'])
+    
+    # Save changes
+    auth_manager.save_users()
+    
+    return jsonify({'success': True, 'message': f'User {username} updated successfully'})
+
+@app.route('/api/users/<username>', methods=['DELETE'])
+@login_required
+@permission_required('system_admin')
+def delete_user(username):
+    """Delete a user"""
+    if username not in auth_manager.users:
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+    
+    if username == 'admin':
+        return jsonify({'success': False, 'message': 'Cannot delete the admin user'}), 400
+    
+    # Don't allow users to delete themselves
+    current_user = get_current_user()
+    if current_user and current_user.username == username:
+        return jsonify({'success': False, 'message': 'Cannot delete your own account'}), 400
+    
+    # Remove user
+    del auth_manager.users[username]
+    auth_manager.save_users()
+    
+    return jsonify({'success': True, 'message': f'User {username} deleted successfully'})
+
 @app.route('/api/patients', methods=['GET'])
+@login_required
 def get_patients():
     """Get all patients"""
     patients = []
@@ -350,6 +481,7 @@ def export_patients_csv():
     return response
 
 @app.route('/api/patients', methods=['POST'])
+@login_required
 def create_patient():
     """Create a new patient"""
     data = request.json
@@ -523,6 +655,7 @@ def search_patients():
     return jsonify(patients)
 
 @app.route('/api/generate', methods=['POST'])
+@login_required
 def generate_dicom():
     """Generate multi-series DICOM study"""
     data = request.json
@@ -1655,6 +1788,7 @@ def send_study_to_pacs():
 
 # PACS Configuration Management Endpoints
 @app.route('/api/pacs/configs', methods=['GET'])
+@login_required
 def list_pacs_configs():
     """List all PACS configurations"""
     try:
@@ -2178,6 +2312,7 @@ def matches_search_criteria(main_tags, query_params):
     return True
 
 @app.route('/api/pacs/query', methods=['POST'])
+@login_required
 def query_pacs():
     """Comprehensive PACS query with multiple search criteria"""
     import subprocess
@@ -3233,4 +3368,8 @@ def parse_hl7_orm(orm_message):
     return result
 
 if __name__ == '__main__':
+    # For HTTPS development (optional - requires SSL certificates)
+    # app.run(debug=True, host='0.0.0.0', port=5055, ssl_context='adhoc')
+    
+    # For HTTP development (current setup)
     app.run(debug=True, host='0.0.0.0', port=5055)

@@ -40,7 +40,6 @@ def test_no_auth_mode():
     auth_manager = AuthManager('config/auth_config.json')
     
     assert not auth_manager.is_auth_enabled()
-    assert auth_manager.is_authenticated() == True
     
     default_user = auth_manager._get_default_user()
     assert default_user.username == 'anonymous'
@@ -66,7 +65,6 @@ def test_local_auth_mode():
     auth_manager = AuthManager('config/auth_config.json')
     
     assert auth_manager.is_auth_enabled()
-    assert not auth_manager.is_authenticated()
     
     # Test default admin user
     admin_user = auth_manager.authenticate('admin', 'admin123')

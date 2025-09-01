@@ -35,6 +35,14 @@ class User:
         """Convert user to dictionary for JSON serialization"""
         return asdict(self)
     
+    def set_password(self, password: str):
+        """Set user password with SHA-256 hashing"""
+        self.password_hash = hashlib.sha256(password.encode()).hexdigest()
+    
+    def check_password(self, password: str) -> bool:
+        """Check if provided password matches stored hash"""
+        return self.password_hash == hashlib.sha256(password.encode()).hexdigest()
+    
     @classmethod
     def from_dict(cls, data: Dict) -> 'User':
         """Create user from dictionary"""
@@ -119,11 +127,12 @@ class AuthManager:
         admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
         admin_user = User(
             username='admin',
-            password_hash=self._hash_password(admin_password),
+            password_hash='',  # Will be set by set_password
             email='admin@dicom-fabricator.local',
             role='admin',
             permissions=['system_admin']
         )
+        admin_user.set_password(admin_password)
         self.users['admin'] = admin_user
         self.save_users()
         print("⚠️  Default admin user created with username 'admin' and password 'admin123'")
@@ -184,7 +193,7 @@ class AuthManager:
             return self._get_default_user()
         
         user = self.users.get(username)
-        if user and user.is_active and self._verify_password(password, user.password_hash):
+        if user and user.is_active and user.check_password(password):
             # Update last login
             user.last_login = datetime.now().isoformat()
             self.save_users()
@@ -211,11 +220,13 @@ class AuthManager:
         
         user = User(
             username=username,
-            password_hash=self._hash_password(password),
+            password_hash='',  # Will be set by set_password
             email=email,
             role=role,
             permissions=permissions
         )
+        
+        user.set_password(password)
         
         self.users[username] = user
         self.save_users()
@@ -238,7 +249,7 @@ class AuthManager:
         if 'is_active' in kwargs:
             user.is_active = kwargs['is_active']
         if 'password' in kwargs:
-            user.password_hash = self._hash_password(kwargs['password'])
+            user.set_password(kwargs['password'])
         
         self.save_users()
         return True

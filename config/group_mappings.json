@@ -1,0 +1,128 @@
+{
+  "default_role": "user",
+  "default_permissions": [
+    "dicom_view",
+    "pacs_query_test"
+  ],
+  "mappings": {
+    "DICOM_Administrators": {
+      "enterprise_group": "DICOM_Administrators",
+      "application_role": "admin",
+      "permissions": [
+        "system_admin"
+      ],
+      "is_active": true,
+      "description": "Full system administration access"
+    },
+    "DICOM_Operators": {
+      "enterprise_group": "DICOM_Operators",
+      "application_role": "operator",
+      "permissions": [
+        "dicom_generate",
+        "dicom_view",
+        "dicom_export",
+        "pacs_query_test",
+        "pacs_move_test",
+        "pacs_configure_test",
+        "pacs_test_test",
+        "pacs_query_prod",
+        "pacs_move_prod",
+        "pacs_configure_prod",
+        "pacs_test_prod",
+        "patients_view",
+        "patients_create",
+        "patients_edit"
+      ],
+      "is_active": true,
+      "description": "Full operational access to DICOM features in all environments"
+    },
+    "DICOM_Viewers": {
+      "enterprise_group": "DICOM_Viewers",
+      "application_role": "viewer",
+      "permissions": [
+        "dicom_view",
+        "pacs_query_test",
+        "pacs_query_prod",
+        "patients_view"
+      ],
+      "is_active": true,
+      "description": "Read-only access to DICOM data in all environments"
+    },
+    "PACS_Administrators": {
+      "enterprise_group": "PACS_Administrators",
+      "application_role": "pacs_admin",
+      "permissions": [
+        "pacs_query_test",
+        "pacs_move_test",
+        "pacs_configure_test",
+        "pacs_test_test",
+        "pacs_query_prod",
+        "pacs_move_prod",
+        "pacs_configure_prod",
+        "pacs_test_prod",
+        "system_config"
+      ],
+      "is_active": true,
+      "description": "PACS management and configuration access in all environments"
+    },
+    "Patient_Managers": {
+      "enterprise_group": "Patient_Managers",
+      "application_role": "patient_manager",
+      "permissions": [
+        "patients_view",
+        "patients_create",
+        "patients_edit",
+        "patients_delete",
+        "dicom_view"
+      ],
+      "is_active": true,
+      "description": "Patient registry management access"
+    },
+    "Test_Environment_Users": {
+      "enterprise_group": "Test_Environment_Users",
+      "application_role": "test_user",
+      "permissions": [
+        "dicom_view",
+        "pacs_query_test",
+        "pacs_move_test",
+        "patients_view"
+      ],
+      "is_active": true,
+      "description": "Test environment access only - read and write"
+    },
+    "Test_Environment_Viewers": {
+      "enterprise_group": "Test_Environment_Viewers",
+      "application_role": "test_viewer",
+      "permissions": [
+        "dicom_view",
+        "pacs_query_test",
+        "patients_view"
+      ],
+      "is_active": true,
+      "description": "Test environment read-only access"
+    },
+    "Production_Environment_Users": {
+      "enterprise_group": "Production_Environment_Users",
+      "application_role": "prod_user",
+      "permissions": [
+        "dicom_view",
+        "pacs_query_prod",
+        "pacs_move_prod",
+        "patients_view"
+      ],
+      "is_active": true,
+      "description": "Production environment access only - read and write"
+    },
+    "Production_Environment_Viewers": {
+      "enterprise_group": "Production_Environment_Viewers",
+      "application_role": "prod_viewer",
+      "permissions": [
+        "dicom_view",
+        "pacs_query_prod",
+        "patients_view"
+      ],
+      "is_active": true,
+      "description": "Production environment read-only access"
+    }
+  }
+}

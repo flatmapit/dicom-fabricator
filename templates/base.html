@@ -76,6 +76,13 @@
                             <i class="fas fa-users"></i> Patients
                         </a>
                     </li>
+                    {% if current_user and 'system_admin' in current_user.permissions %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'users_page' %}active{% endif %}" href="/users">
+                            <i class="fas fa-user-cog"></i> Users
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
                 
                 <!-- Authentication Status -->
@@ -83,13 +90,13 @@
                     {% if auth_enabled %}
                         {% if current_user %}
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" onclick="console.log('Dropdown clicked')">
                                     <i class="fas fa-user-circle"></i> {{ current_user.username }}
                                     {% if current_user.role != 'user' %}
                                         <span class="badge bg-secondary">{{ current_user.role }}</span>
                                     {% endif %}
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown" style="z-index: 9999;">
                                     <li><h6 class="dropdown-header">User Information</h6></li>
                                     <li><span class="dropdown-item-text"><i class="fas fa-envelope"></i> {{ current_user.email }}</span></li>
                                     <li><span class="dropdown-item-text"><i class="fas fa-user-tag"></i> Role: {{ current_user.role }}</span></li>
@@ -158,6 +165,20 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Initialize Bootstrap dropdowns -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize all dropdowns
+            var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+            var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+                return new bootstrap.Dropdown(dropdownToggleEl);
+            });
+            
+            // Debug dropdown functionality
+            console.log('Bootstrap dropdowns initialized:', dropdownList.length);
+        });
+    </script>
     
     <!-- Tosijs UI Library temporarily disabled due to loading issues -->
     <!-- <script src="https://ui.xinjs.net/iife.js"></script> -->

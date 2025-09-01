@@ -80,3 +80,9 @@ data/*.json
 .env.*.local
 secrets.json
 secrets.yaml
+
+# Authentication and user data
+config/users.json
+config/auth_config.json
+cookies.txt
+*.cookies

@@ -2,6 +2,8 @@
 
 DICOM Fabricator (DF) is a tool for PACS administrators and radiology clinical integrations developers and maintainers. DF is a DICOM study test data generation and PACS query system built with Python and Flask. DF allows you to query and C-MOVE across multiple PACS, create synthetic DICOM studies from user input or based on an HL7 ORM order message, and to monitor PACS status with C-ECHO.
 
+Note: This tool works in test, but exercise caution with live/prod PACS and test in your environment carefully. 
+
 ![Dashboard Screenshot](docs/images/dashboard.png)
 
 

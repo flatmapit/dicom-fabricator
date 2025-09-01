@@ -287,7 +287,7 @@ class PacsConfigManager:
     def get_stats(self) -> Dict[str, Any]:
         """Get PACS configuration statistics"""
         total = len(self.configs)
-        active = len([c for c in self.configs.values() if c.is_active])
+        active = len([c for c in self.configs.values() if c.test_status == "success"])
         tested = len([c for c in self.configs.values() if c.last_tested])
         successful = len([c for c in self.configs.values() if c.test_status == "success"])
         
