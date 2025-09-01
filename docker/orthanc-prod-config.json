@@ -1,0 +1,18 @@
+{
+  "Name": "Production PACS",
+  "DicomAet": "ORTHANC",
+  "DicomPort": 4242,
+  "HttpPort": 8042,
+  "StorageDirectory": "/var/lib/orthanc/db",
+  "DicomAlwaysAllowMove": true,
+  "DicomAlwaysAllowEcho": true,
+  "DicomAlwaysAllowStore": true,
+  "DicomCheckCalledAet": false,
+  "AuthenticationEnabled": true,
+  "RegisteredUsers": {
+    "orthanc": "orthanc"
+  },
+  "DicomModalities": {
+    "TESTPACS2": ["TESTPACS2", "localhost", 4243]
+  }
+}
