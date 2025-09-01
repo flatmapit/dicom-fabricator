@@ -2266,6 +2266,227 @@ def format_study_result(study_data):
     
     return study_data
 
+def check_pacs_routing(source_pacs, destination_pacs):
+    """
+    Pre-flight check to verify if destination PACS is reachable from source PACS.
+    This helps detect routing issues before attempting C-MOVE operations.
+    """
+    import subprocess
+    
+    try:
+        # Test 1: Check if destination PACS is reachable via DICOM echo
+        echo_cmd = [
+            'echoscu',
+            '-aet', 'DICOMFAB',
+            '-aec', destination_pacs.aec,
+            destination_pacs.host, str(destination_pacs.port)
+        ]
+        
+        echo_result = subprocess.run(
+            echo_cmd,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if echo_result.returncode != 0:
+            return {
+                'success': False,
+                'error': f'Destination PACS {destination_pacs.name} ({destination_pacs.aec}@{destination_pacs.host}:{destination_pacs.port}) is not reachable',
+                'details': {
+                    'echo_command': ' '.join(echo_cmd),
+                    'echo_exit_code': echo_result.returncode,
+                    'echo_stderr': echo_result.stderr
+                }
+            }
+        
+        # Test 2: Check if source PACS can reach destination PACS
+        # This simulates what the source PACS would need to do for C-MOVE
+        source_echo_cmd = [
+            'echoscu',
+            '-aet', source_pacs.aec,
+            '-aec', destination_pacs.aec,
+            destination_pacs.host, str(destination_pacs.port)
+        ]
+        
+        source_echo_result = subprocess.run(
+            source_echo_cmd,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if source_echo_result.returncode != 0:
+            return {
+                'success': False,
+                'error': f'Source PACS {source_pacs.name} cannot reach destination PACS {destination_pacs.name}. This indicates a routing configuration issue.',
+                'details': {
+                    'source_echo_command': ' '.join(source_echo_cmd),
+                    'source_echo_exit_code': source_echo_result.returncode,
+                    'source_echo_stderr': source_echo_result.stderr,
+                    'suggestion': 'The source PACS may not have the destination PACS configured in its routing table.'
+                }
+            }
+        
+        return {
+            'success': True,
+            'message': f'Routing check passed: {source_pacs.name} can reach {destination_pacs.name}'
+        }
+        
+    except subprocess.TimeoutExpired:
+        return {
+            'success': False,
+            'error': f'Routing check timeout: Destination PACS {destination_pacs.name} is not responding',
+            'details': {
+                'timeout': '10 seconds',
+                'suggestion': 'Check if the destination PACS server is running and accessible.'
+            }
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Routing check failed: {str(e)}',
+            'details': {
+                'exception': str(e),
+                'suggestion': 'Check network connectivity and PACS server configurations.'
+            }
+        }
+
+@app.route('/api/pacs/configure-routing', methods=['POST'])
+def configure_pacs_routing():
+    """Configure DICOM routing between PACS servers"""
+    data = request.get_json()
+    
+    source_pacs_id = data.get('source_pacs_id')
+    destination_pacs_id = data.get('destination_pacs_id')
+    
+    if not all([source_pacs_id, destination_pacs_id]):
+        return jsonify({
+            'success': False,
+            'error': 'Missing required parameters: source_pacs_id, destination_pacs_id'
+        }), 400
+    
+    # Get PACS configurations
+    source_pacs = pacs_manager.get_config(source_pacs_id)
+    destination_pacs = pacs_manager.get_config(destination_pacs_id)
+    
+    if not source_pacs:
+        return jsonify({
+            'success': False,
+            'error': 'Source PACS configuration not found'
+        }), 404
+    
+    if not destination_pacs:
+        return jsonify({
+            'success': False,
+            'error': 'Destination PACS configuration not found'
+        }), 404
+    
+    try:
+        # Try to configure routing using Orthanc REST API if available
+        routing_result = configure_orthanc_routing(source_pacs, destination_pacs)
+        
+        if routing_result['success']:
+            return jsonify({
+                'success': True,
+                'message': f'Routing configured from {source_pacs.name} to {destination_pacs.name}',
+                'details': routing_result.get('details', {})
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': routing_result['error'],
+                'details': routing_result.get('details', {}),
+                'suggestion': 'Manual configuration may be required. Check PACS server documentation for routing setup instructions.'
+            }), 400
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to configure routing: {str(e)}',
+            'suggestion': 'Manual configuration may be required.'
+        }), 500
+
+def configure_orthanc_routing(source_pacs, destination_pacs):
+    """Configure routing between Orthanc PACS servers"""
+    import requests
+    
+    # Orthanc credentials (from docker-compose.yml and default settings)
+    orthanc_credentials = {
+        'localhost:4242': ('test', 'test123'),
+        'localhost:4243': ('test2', 'test456'),
+        'localhost:4244': ('test', 'test123'),  # Assuming same credentials
+        'localhost:4245': ('orthanc', 'orthanc')   # Default Orthanc credentials
+    }
+    
+    source_key = f"{source_pacs.host}:{source_pacs.port}"
+    dest_key = f"{destination_pacs.host}:{destination_pacs.port}"
+    
+    if source_key not in orthanc_credentials:
+        return {
+            'success': False,
+            'error': f'No credentials available for source PACS {source_pacs.name}',
+            'details': {'source_pacs': source_key}
+        }
+    
+    username, password = orthanc_credentials[source_key]
+    # Orthanc web port mapping from docker-compose.yml
+    web_port_mapping = {
+        4242: 8042,  # orthanc-test-pacs
+        4243: 8043,  # orthanc-test-pacs-2
+        4244: 8044,  # testpacs-test
+        4245: 8045   # testpacs-prod
+    }
+    web_port = web_port_mapping.get(source_pacs.port, source_pacs.port + 8000)
+    
+    try:
+        # Add destination PACS to source PACS modalities
+        routing_data = {
+            'AET': destination_pacs.aec,
+            'Host': destination_pacs.host,
+            'Port': destination_pacs.port
+        }
+        
+        response = requests.put(
+            f'http://localhost:{web_port}/modalities/{destination_pacs.aec}',
+            json=routing_data,
+            auth=(username, password),
+            timeout=10
+        )
+        
+        if response.status_code in [200, 201]:
+            return {
+                'success': True,
+                'message': f'Routing configured from {source_pacs.name} to {destination_pacs.name}',
+                'details': {
+                    'source_pacs': source_pacs.name,
+                    'destination_pacs': destination_pacs.name,
+                    'routing_data': routing_data
+                }
+            }
+        else:
+            return {
+                'success': False,
+                'error': f'Failed to configure routing: HTTP {response.status_code}',
+                'details': {
+                    'response_text': response.text,
+                    'routing_data': routing_data
+                }
+            }
+            
+    except requests.exceptions.RequestException as e:
+        return {
+            'success': False,
+            'error': f'Network error configuring routing: {str(e)}',
+            'details': {'exception': str(e)}
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Unexpected error configuring routing: {str(e)}',
+            'details': {'exception': str(e)}
+        }
+
 @app.route('/api/pacs/c-move', methods=['POST'])
 def c_move_study():
     """Perform C-MOVE operation to transfer study between PACS servers"""
@@ -2298,6 +2519,16 @@ def c_move_study():
             'success': False,
             'error': 'Destination PACS configuration not found'
         }), 404
+    
+    # Pre-flight check: Test if destination PACS is reachable from source PACS
+    routing_check_result = check_pacs_routing(source_pacs, destination_pacs)
+    if not routing_check_result['success']:
+        return jsonify({
+            'success': False,
+            'error': routing_check_result['error'],
+            'details': routing_check_result.get('details', {}),
+            'suggestion': 'Consider using C-STORE to directly send the study to the destination PACS, or configure DICOM routing between the PACS servers.'
+        }), 400
     
     try:
         # Build movescu command for C-MOVE operation
