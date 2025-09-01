@@ -1,0 +1,356 @@
+{
+  "generated_at": "2025-09-01T09:00:25.194245",
+  "total_studies": 50,
+  "studies": [
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.11601822796297032129491738916158042678",
+      "accession": "ACC202508090001",
+      "patient": "MILLER^JAMES",
+      "modality": "DX",
+      "description": "Head MRI - Test Study 1"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.12056807232225281384211009720127517220",
+      "accession": "ACC202508220002",
+      "patient": "RODRIGUEZ^JENNIFER",
+      "modality": "DX",
+      "description": "Spine X-Ray - Test Study 2"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.41248465028258478994295746929818378096",
+      "accession": "ACC202508080003",
+      "patient": "TESTCASE^CLINICAL",
+      "modality": "US",
+      "description": "Abdominal CT - Test Study 3"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.51924634078038926160706406786702416384",
+      "accession": "ACC202508270004",
+      "patient": "MARTINEZ^CHRISTOPHER",
+      "modality": "US",
+      "description": "Chest X-Ray - Test Study 4"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.11057724390486695078302471411918876825",
+      "accession": "ACC202508060005",
+      "patient": "MILLER^JAMES",
+      "modality": "XA",
+      "description": "Vascular Angiography - Test Study 5"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.50976587601235386362310448666701411803",
+      "accession": "ACC202508270006",
+      "patient": "WILSON^SARAH",
+      "modality": "XA",
+      "description": "Thyroid Ultrasound - Test Study 6"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.13431920260879008146070103473653237080",
+      "accession": "ACC202508280007",
+      "patient": "BROWN^DAVID",
+      "modality": "CT",
+      "description": "Chest X-Ray - Test Study 7"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.84158630614545706773264619006657532706",
+      "accession": "ACC202508270008",
+      "patient": "WILSON^SARAH",
+      "modality": "DX",
+      "description": "Brain MRI - Test Study 8"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.18331313956125909768788654382613186797",
+      "accession": "ACC202508240009",
+      "patient": "GARCIA^MICHAEL",
+      "modality": "DX",
+      "description": "Ultrasound Abdomen - Test Study 9"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.11121401349369568448188024685874421424",
+      "accession": "ACC202508190010",
+      "patient": "GARCIA^MICHAEL",
+      "modality": "CT",
+      "description": "Head MRI - Test Study 10"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.11306432177636586493876796638539829221",
+      "accession": "ACC202508250011",
+      "patient": "GARCIA^MICHAEL",
+      "modality": "CT",
+      "description": "Abdominal CT - Test Study 11"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.77816494338936920055757256578646145296",
+      "accession": "ACC202508040012",
+      "patient": "GARCIA^MICHAEL",
+      "modality": "MR",
+      "description": "Spine X-Ray - Test Study 12"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.12484862393158909807076028765276609777",
+      "accession": "ACC202508150013",
+      "patient": "MILLER^JAMES",
+      "modality": "CT",
+      "description": "Spine X-Ray - Test Study 13"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.11416352012614638782366451470535918997",
+      "accession": "ACC202508290014",
+      "patient": "BROWN^DAVID",
+      "modality": "MR",
+      "description": "Vascular Angiography - Test Study 14"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.11047041673632807602186389293335307722",
+      "accession": "ACC202508030015",
+      "patient": "JONES^MARY",
+      "modality": "DX",
+      "description": "Cardiac Angiography - Test Study 15"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.88263016773447548598165447150190762624",
+      "accession": "ACC202508240016",
+      "patient": "WILSON^SARAH",
+      "modality": "CT",
+      "description": "Ultrasound Abdomen - Test Study 16"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.12338779951369312338120083103083280179",
+      "accession": "ACC202508120017",
+      "patient": "MILLER^JAMES",
+      "modality": "XA",
+      "description": "Brain MRI - Test Study 17"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.22258428425986357623768740940203893073",
+      "accession": "ACC202508060018",
+      "patient": "SMITH^JOHN",
+      "modality": "DX",
+      "description": "Chest X-Ray - Test Study 18"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.71134018559684970611918375409416505222",
+      "accession": "ACC202508260019",
+      "patient": "WILSON^SARAH",
+      "modality": "US",
+      "description": "Brain MRI - Test Study 19"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.15863412159929808238596889723001333024",
+      "accession": "ACC202508200020",
+      "patient": "SMITH^JOHN",
+      "modality": "XA",
+      "description": "Vascular Angiography - Test Study 20"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.47525567855828419757167141903603961231",
+      "accession": "ACC202508250021",
+      "patient": "TESTCASE^CLINICAL",
+      "modality": "CT",
+      "description": "Pelvic CT - Test Study 21"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.63295490788501344680627430671929185186",
+      "accession": "ACC202508080022",
+      "patient": "TESTCASE^CLINICAL",
+      "modality": "DX",
+      "description": "Vascular Angiography - Test Study 22"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.11776943859073807916618374541303576897",
+      "accession": "ACC202508310023",
+      "patient": "MARTINEZ^CHRISTOPHER",
+      "modality": "MR",
+      "description": "Ultrasound Abdomen - Test Study 23"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.83489212404313116595307331328469977273",
+      "accession": "ACC202508220024",
+      "patient": "RODRIGUEZ^JENNIFER",
+      "modality": "MR",
+      "description": "Chest X-Ray - Test Study 24"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.46263987697125819881560415731805749665",
+      "accession": "ACC202508220025",
+      "patient": "RODRIGUEZ^JENNIFER",
+      "modality": "DX",
+      "description": "Ultrasound Abdomen - Test Study 25"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.50995703306563370278158167313039348313",
+      "accession": "ACC202508120026",
+      "patient": "BROWN^DAVID",
+      "modality": "CT",
+      "description": "Ultrasound Abdomen - Test Study 26"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.12229021963802527578320914509080366320",
+      "accession": "ACC202508240027",
+      "patient": "GARCIA^MICHAEL",
+      "modality": "MR",
+      "description": "Cardiac Angiography - Test Study 27"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.32638838496856021089372507057094334088",
+      "accession": "ACC202508050028",
+      "patient": "JONES^MARY",
+      "modality": "US",
+      "description": "Abdominal CT - Test Study 28"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.58585497004531017959990410688106746854",
+      "accession": "ACC202508210029",
+      "patient": "WILSON^SARAH",
+      "modality": "MR",
+      "description": "Thyroid Ultrasound - Test Study 29"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.12240941876651954492052270878190778844",
+      "accession": "ACC202508170030",
+      "patient": "SMITH^JOHN",
+      "modality": "DX",
+      "description": "Abdominal CT - Test Study 30"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.91676245962678872898588623327638119427",
+      "accession": "ACC202508300031",
+      "patient": "BROWN^DAVID",
+      "modality": "XA",
+      "description": "Pelvic CT - Test Study 31"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.10851395728379853412777678519401261771",
+      "accession": "ACC202508080032",
+      "patient": "BROWN^DAVID",
+      "modality": "US",
+      "description": "Chest X-Ray - Test Study 32"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.81629444588349782664671226482809081836",
+      "accession": "ACC202508050033",
+      "patient": "BROWN^DAVID",
+      "modality": "DX",
+      "description": "Ultrasound Abdomen - Test Study 33"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.12322767627770123202440013064487955849",
+      "accession": "ACC202508190034",
+      "patient": "WILSON^SARAH",
+      "modality": "CT",
+      "description": "Head MRI - Test Study 34"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.27021776655929925345377344194421677821",
+      "accession": "ACC202508130035",
+      "patient": "DAVIS^LISA",
+      "modality": "XA",
+      "description": "Head MRI - Test Study 35"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.61950376262681690342233068757653907484",
+      "accession": "ACC202508230036",
+      "patient": "TESTCASE^CLINICAL",
+      "modality": "MR",
+      "description": "Ultrasound Abdomen - Test Study 36"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.44666345765765138249311462337194606832",
+      "accession": "ACC202509010037",
+      "patient": "JONES^MARY",
+      "modality": "XA",
+      "description": "Brain MRI - Test Study 37"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.13847220588334670211054020412504749954",
+      "accession": "ACC202508190038",
+      "patient": "GARCIA^MICHAEL",
+      "modality": "CT",
+      "description": "Vascular Angiography - Test Study 38"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.11244645496357562099245175940919560519",
+      "accession": "ACC202508050039",
+      "patient": "GARCIA^MICHAEL",
+      "modality": "DX",
+      "description": "Thyroid Ultrasound - Test Study 39"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.46840170670429166852372717126752301575",
+      "accession": "ACC202508250040",
+      "patient": "RODRIGUEZ^JENNIFER",
+      "modality": "US",
+      "description": "Vascular Angiography - Test Study 40"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.13326214802427088288813593116744223725",
+      "accession": "ACC202508220041",
+      "patient": "RODRIGUEZ^JENNIFER",
+      "modality": "CT",
+      "description": "Spine X-Ray - Test Study 41"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.72584395322093164253695461512101822940",
+      "accession": "ACC202508160042",
+      "patient": "GARCIA^MICHAEL",
+      "modality": "XA",
+      "description": "Thyroid Ultrasound - Test Study 42"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.62573088099206489902951222002849821606",
+      "accession": "ACC202508210043",
+      "patient": "DAVIS^LISA",
+      "modality": "DX",
+      "description": "Brain MRI - Test Study 43"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.99995017610674661429945525727174634658",
+      "accession": "ACC202508110044",
+      "patient": "MARTINEZ^CHRISTOPHER",
+      "modality": "CT",
+      "description": "Thyroid Ultrasound - Test Study 44"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.67751058149949784605691947559806385738",
+      "accession": "ACC202508060045",
+      "patient": "WILSON^SARAH",
+      "modality": "XA",
+      "description": "Head MRI - Test Study 45"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.10121051398798757929662248946732796875",
+      "accession": "ACC202508150046",
+      "patient": "GARCIA^MICHAEL",
+      "modality": "US",
+      "description": "Brain MRI - Test Study 46"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.65331835187674452073855992577777394890",
+      "accession": "ACC202508220047",
+      "patient": "JONES^MARY",
+      "modality": "DX",
+      "description": "Abdominal CT - Test Study 47"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.44645340114988087167958718818673991276",
+      "accession": "ACC202508060048",
+      "patient": "BROWN^DAVID",
+      "modality": "XA",
+      "description": "Head MRI - Test Study 48"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.80966713197813006979788403916605256413",
+      "accession": "ACC202508240049",
+      "patient": "TESTCASE^CLINICAL",
+      "modality": "MR",
+      "description": "Spine X-Ray - Test Study 49"
+    },
+    {
+      "study_uid": "1.2.826.0.1.3680043.8.498.36026449953903007770308207549653791630",
+      "accession": "ACC202508310050",
+      "patient": "MILLER^JAMES",
+      "modality": "CT",
+      "description": "Head MRI - Test Study 50"
+    }
+  ]
+}

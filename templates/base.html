@@ -101,8 +101,15 @@
                 </div>
                 <div class="col-md-6 text-center text-md-end">
                     <div id="footerStats" class="text-muted small">
-                        <span class="me-2"><i class="fas fa-server"></i> PACS: <span id="footerTotalConfigs">-</span></span>
-                        <span><i class="fas fa-check-circle text-success"></i> Active: <span id="footerActiveConfigs">-</span></span>
+                        <span class="me-2" style="cursor: pointer;" onclick="window.location.href='/pacs'" title="Click to manage PACS configurations">
+                            <i class="fas fa-server"></i> PACS: <span id="footerTotalConfigs">-</span>
+                        </span>
+                        <span class="me-2" style="cursor: pointer;" onclick="window.location.href='/pacs'" title="Click to manage PACS configurations">
+                            <i class="fas fa-check-circle text-success"></i> Active: <span id="footerActiveConfigs">-</span>
+                        </span>
+                        <span class="me-2" style="cursor: pointer;" onclick="window.location.href='/pacs'" title="Click to manage PACS configurations">
+                            <i class="fas fa-clock"></i> <span id="footerLastTest">-</span>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -111,6 +118,9 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Tosijs UI Library temporarily disabled due to loading issues -->
+    <!-- <script src="https://ui.xinjs.net/iife.js"></script> -->
     
     
     <!-- Custom JS -->
@@ -172,6 +182,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadFooterStats();
             
+            // Refresh footer stats every 2 minutes to show updated PACS status
+            setInterval(loadFooterStats, 120000);
+            
             // Setup PACS persistence for common select elements
             const pacsSelect = document.getElementById('pacsSelect');
             const queryPacsSelect = document.getElementById('queryPacsSelect');
@@ -192,6 +205,16 @@
                 if (pacsData.success) {
                     document.getElementById('footerTotalConfigs').textContent = pacsData.stats.total_configs;
                     document.getElementById('footerActiveConfigs').textContent = pacsData.stats.active_configs;
+                    
+                    // Show last test time
+                    const lastTestElement = document.getElementById('footerLastTest');
+                    if (pacsData.stats.time_since_last_test) {
+                        lastTestElement.textContent = pacsData.stats.time_since_last_test;
+                        lastTestElement.title = `Last tested: ${pacsData.stats.time_since_last_test}`;
+                    } else {
+                        lastTestElement.textContent = 'Never';
+                        lastTestElement.title = 'No PACS tests performed yet';
+                    }
                 }
                 
             } catch (error) {

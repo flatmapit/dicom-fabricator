@@ -2,7 +2,12 @@
 
 A comprehensive DICOM study generation and management system built with Python and Flask. This tool allows you to create synthetic DICOM studies from HL7 ORM messages, manage patient data, and integrate with PACS servers.
 
-## 🚀 Features
+![Dashboard Screenshot](docs/images/dashboard.png)
+
+
+*For a detailed visual overview of features and common activities, see [Feature Overview](docs/feature_overview.md)*
+
+## Features
 
 - **HL7 ORM Integration**: Parse HL7 ORM messages and generate corresponding DICOM studies
 - **DICOM Generation**: Create synthetic DICOM files with realistic metadata
@@ -11,7 +16,7 @@ A comprehensive DICOM study generation and management system built with Python a
 - **Web Interface**: Modern Flask-based web application with Bootstrap UI
 - **Docker Support**: Easy deployment with Docker Compose for PACS servers
 
-## 🏗️ Architecture
+## Architecture
 
 - **Backend**: Python Flask application
 - **DICOM Processing**: pydicom library for DICOM manipulation
@@ -19,13 +24,14 @@ A comprehensive DICOM study generation and management system built with Python a
 - **Frontend**: HTML templates with Bootstrap 5 and JavaScript
 - **Database**: JSON-based storage for configurations and patient data
 
-## 📋 Prerequisites
+## Prerequisites
 
-- Python 3.8+
+- Python 3.8+ (3.11 recommended)
+- pyenv (recommended for Python version management)
 - DCMTK tools (findscu, storescu, movescu, echoscu, movescu)
 - Docker and Docker Compose (for PACS servers)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone the Repository
 
@@ -34,13 +40,52 @@ git clone https://github.com/flatmapit/dicom-fabricator.git
 cd dicom-fabricator
 ```
 
-### 2. Install Dependencies
+### 2. Set Up Python Environment (Recommended)
+
+#### Install pyenv (if not already installed)
+
+**macOS:**
+```bash
+brew install pyenv
+```
+
+**Ubuntu/Debian:**
+```bash
+curl https://pyenv.run | bash
+```
+
+**Windows:**
+```bash
+# Install via pip
+pip install pyenv-win
+```
+
+#### Create and activate Python environment
+
+```bash
+# Install Python 3.11 (recommended version)
+pyenv install 3.11.0
+
+# Set local Python version for this project
+pyenv local 3.11.0
+
+# Create virtual environment
+python -m venv .venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source .venv/bin/activate
+# On Windows:
+.venv\Scripts\activate
+```
+
+### 3. Install Dependencies
 
 ```bash
 pip install -r config/requirements.txt
 ```
 
-### 3. Install DCMTK
+### 4. Install DCMTK
 
 #### macOS
 ```bash
@@ -55,7 +100,7 @@ sudo apt-get install dcmtk
 #### Windows
 Download from [DCMTK website](https://dcmtk.org/en/dcmtk/dcmtk-downloads/)
 
-### 4. Start PACS Servers (Optional)
+### 5. Start PACS Servers (Optional)
 
 ```bash
 cd docker
@@ -66,7 +111,7 @@ This will start two Orthanc PACS servers:
 - **Orthanc Test PACS**: localhost:4242 (DICOM), localhost:8042 (HTTP)
 - **Orthanc Test PACS 2**: localhost:4243 (DICOM), localhost:8043 (HTTP)
 
-### 5. Run the Application
+### 6. Run the Application
 
 ```bash
 python app.py
@@ -74,7 +119,7 @@ python app.py
 
 The application will be available at `http://localhost:5001`
 
-## 🔧 Configuration
+## Configuration
 
 ### PACS Configuration
 
@@ -106,7 +151,7 @@ Copy the sample patient configuration:
 cp data/patient_config.json.sample data/patient_config.json
 ```
 
-## 📖 Usage
+## Usage
 
 ### 1. Generate DICOM Studies
 
@@ -136,7 +181,7 @@ cp data/patient_config.json.sample data/patient_config.json
 3. Test connectivity
 4. View server status
 
-## 🏥 HL7 ORM Message Format
+## HL7 ORM Message Format
 
 The application expects HL7 ORM (Order Entry) messages. Key fields:
 
@@ -154,17 +199,51 @@ The application expects HL7 ORM (Order Entry) messages. Key fields:
 
 ## 🤝 Contributing
 
+### Git Workflow
+
+This project follows a structured Git branching strategy:
+
+- **`main`** - Production-ready code, stable releases
+- **`develop`** - Integration branch for features, main development work
+- **`feature/*`** - Feature branches for individual development work
+
+#### For New Features:
+
+1. **Start from develop:**
+   ```bash
+   git checkout develop
+   git pull origin develop
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Work on your feature:**
+   - Make commits with clear, descriptive messages
+   - Update CHANGELOG.md for significant changes
+   - Keep commits atomic and focused
+
+3. **Complete and merge:**
+   ```bash
+   git checkout develop
+   git merge feature/your-feature-name
+   git push origin develop
+   ```
+
+For detailed workflow information, see [Git Workflow Documentation](docs/GIT_WORKFLOW.md).
+
+#### General Contributing Guidelines:
+
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch from develop
 3. Make your changes
 4. Add tests if applicable
-5. Submit a pull request
+5. Update CHANGELOG.md
+6. Submit a pull request to develop
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 This software is for **educational and testing purposes only**. It generates synthetic DICOM data and should not be used in production healthcare environments. Always ensure compliance with local healthcare regulations and data protection laws.
 

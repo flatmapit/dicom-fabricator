@@ -186,14 +186,7 @@ let pacsTable = null;
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing custom table implementation');
     
-    // Initialize the table
-    const tableElement = document.querySelector('#pacsTable');
-    if (tableElement) {
-        pacsTable = new CustomTable('#pacsTable');
-        console.log('Custom table initialized successfully');
-    }
-    
-    // Load PACS configurations
+    // Load PACS configurations (table will be initialized after data loads)
     loadPacsConfigurations();
 });
 </script>
@@ -348,6 +341,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         
                         <div class="mb-3">
+                            <label for="configEnvironment" class="form-label">Environment</label>
+                            <select class="form-select" id="configEnvironment" name="environment">
+                                <option value="test">Test</option>
+                                <option value="production">Production</option>
+                                <option value="both">Both</option>
+                            </select>
+                            <div class="form-text">Environment classification for this PACS</div>
+                        </div>
+                        
+                        <div class="mb-3">
                             <label for="configDescription" class="form-label">Description</label>
                             <textarea class="form-control" id="configDescription" name="description" rows="2"></textarea>
                             <div class="form-text">Optional description or notes</div>
@@ -464,10 +467,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                     new Date(config.last_tested).toLocaleString() : 
                                     'Never';
                                 
+                                // Apply environment color coding
+                                const envColor = config.environment === 'production' ? '#6f42c1' : 
+                                               config.environment === 'test' ? '#198754' : '#6c757d';
+                                const envBadge = config.environment ? 
+                                    `<span class="badge" style="background-color: ${envColor}; color: white; font-size: 0.7rem; margin-left: 5px;">${config.environment}</span>` : '';
+                                
                                 return `
                                     <tr>
                                         <td>
-                                            <strong>${config.name}</strong>
+                                            <strong style="color: ${envColor};">${config.name}</strong>
+                                            ${envBadge}
                                             ${config.is_active ? '' : '<br><small class="text-muted">(Inactive)</small>'}
                                         </td>
                                         <td><code>${config.host}:${config.port}</code></td>
@@ -490,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                             <div class="btn-group btn-group-sm" role="group">
                                                 <button class="btn btn-outline-info" onclick="testConnection('${config.id}')" 
                                                         data-bs-toggle="tooltip" title="Test PACS connection">
-                                                    <i class="fas fa-flask"></i>
+                                                    <i class="fas fa-sync-alt"></i>
                                                 </button>
                                                 <button class="btn btn-outline-primary" onclick="editConfig('${config.id}')" 
                                                         data-bs-toggle="tooltip" title="Edit configuration">
@@ -512,13 +522,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
             document.getElementById('pacsTableContainer').innerHTML = tableHtml;
 
-                    // Initialize the custom table
-        if (pacsTable) {
-            pacsTable.setData(configs);
-            console.log('Custom table data set successfully');
-        } else {
-            console.warn('Custom table instance not initialized, cannot set data.');
-        }
+            // Initialize the custom table after the HTML is rendered
+            const tableElement = document.querySelector('#pacsTable');
+            if (tableElement) {
+                if (pacsTable) {
+                    pacsTable.destroy(); // Clean up previous instance
+                }
+                pacsTable = new CustomTable('#pacsTable');
+                pacsTable.setData(configs);
+                console.log('Custom table initialized and data set successfully');
+            } else {
+                console.warn('Table element not found, cannot initialize custom table.');
+            }
     }
 
     // Add event listeners and initialization
@@ -563,6 +578,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('configPort').value = config.port;
                     document.getElementById('configAET').value = config.aet;
                     document.getElementById('configAEC').value = config.aec;
+                    document.getElementById('configEnvironment').value = config.environment || 'test';
                     document.getElementById('configDescription').value = config.description || '';
                     document.getElementById('configDefault').checked = config.is_default;
                     document.getElementById('configActive').checked = config.is_active;
@@ -587,6 +603,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 port: parseInt(formData.get('port')),
                 aet: formData.get('aet'),
                 aec: formData.get('aec'),
+                environment: formData.get('environment'),
                 description: formData.get('description'),
                 is_default: document.getElementById('configDefault').checked,
                 is_active: document.getElementById('configActive').checked

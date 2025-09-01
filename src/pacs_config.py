@@ -21,6 +21,7 @@ class PacsConfiguration:
     port: int
     aet: str  # Application Entity Title (our AET when connecting)
     aec: str  # Called Application Entity (PACS AET)
+    environment: str = "test"  # test, production, or both
     is_default: bool = False
     is_active: bool = True
     created_date: str = ""
@@ -48,7 +49,7 @@ class PacsConfigManager:
         """Ensure default PACS configurations exist"""
         if not self.configs:
             # Add default configurations
-            orthanc_config = PacsConfiguration(
+            orthanc_test_config = PacsConfiguration(
                 id=str(uuid.uuid4()),
                 name="Orthanc Test PACS",
                 description="Local Orthanc PACS server for testing",
@@ -56,24 +57,54 @@ class PacsConfigManager:
                 port=4242,
                 aet="DICOMFAB",
                 aec="ORTHANC",
+                environment="test",
                 is_default=True,
                 is_active=True
             )
             
-            testpacs_config = PacsConfiguration(
+            orthanc_prod_config = PacsConfiguration(
                 id=str(uuid.uuid4()),
-                name="Test PACS",
-                description="Generic test PACS configuration",
+                name="Orthanc Production PACS",
+                description="Local Orthanc PACS server for production",
                 host="localhost",
-                port=4242,
-                aet="DICOMFAB", 
-                aec="TESTPACS",
+                port=4243,
+                aet="DICOMFAB",
+                aec="ORTHANC_PROD",
+                environment="production",
                 is_default=False,
                 is_active=True
             )
             
-            self.configs[orthanc_config.id] = orthanc_config
-            self.configs[testpacs_config.id] = testpacs_config
+            testpacs_test_config = PacsConfiguration(
+                id=str(uuid.uuid4()),
+                name="Test PACS",
+                description="Generic test PACS configuration",
+                host="localhost",
+                port=4244,
+                aet="DICOMFAB", 
+                aec="TESTPACS",
+                environment="test",
+                is_default=False,
+                is_active=True
+            )
+            
+            testpacs_prod_config = PacsConfiguration(
+                id=str(uuid.uuid4()),
+                name="Production PACS",
+                description="Production PACS configuration",
+                host="localhost",
+                port=4245,
+                aet="DICOMFAB", 
+                aec="PRODPACS",
+                environment="production",
+                is_default=False,
+                is_active=True
+            )
+            
+            self.configs[orthanc_test_config.id] = orthanc_test_config
+            self.configs[orthanc_prod_config.id] = orthanc_prod_config
+            self.configs[testpacs_test_config.id] = testpacs_test_config
+            self.configs[testpacs_prod_config.id] = testpacs_prod_config
             self.save_configs()
     
     def load_configs(self):
@@ -104,7 +135,7 @@ class PacsConfigManager:
             print(f"Error saving PACS configs: {e}")
     
     def create_config(self, name: str, description: str, host: str, port: int,
-                     aet: str, aec: str, is_default: bool = False) -> PacsConfiguration:
+                     aet: str, aec: str, environment: str = "test", is_default: bool = False) -> PacsConfiguration:
         """Create a new PACS configuration"""
         # If this is set as default, unset other defaults
         if is_default:
@@ -118,6 +149,7 @@ class PacsConfigManager:
             port=port,
             aet=aet,
             aec=aec,
+            environment=environment,
             is_default=is_default
         )
         
@@ -259,10 +291,35 @@ class PacsConfigManager:
         tested = len([c for c in self.configs.values() if c.last_tested])
         successful = len([c for c in self.configs.values() if c.test_status == "success"])
         
+        # Find the most recent test time
+        last_test_times = [c.last_tested for c in self.configs.values() if c.last_tested]
+        last_test_time = max(last_test_times) if last_test_times else None
+        
+        # Calculate time since last test
+        time_since_last_test = None
+        if last_test_time:
+            try:
+                from datetime import datetime
+                last_test_dt = datetime.fromisoformat(last_test_time.replace('Z', '+00:00'))
+                now = datetime.now()
+                time_diff = now - last_test_dt
+                if time_diff.total_seconds() < 60:
+                    time_since_last_test = "just now"
+                elif time_diff.total_seconds() < 3600:
+                    minutes = int(time_diff.total_seconds() / 60)
+                    time_since_last_test = f"{minutes}m ago"
+                else:
+                    hours = int(time_diff.total_seconds() / 3600)
+                    time_since_last_test = f"{hours}h ago"
+            except:
+                time_since_last_test = "recently"
+        
         return {
             "total_configs": total,
             "active_configs": active,
             "tested_configs": tested,
             "successful_tests": successful,
-            "default_config": self.get_default_config().name if self.get_default_config() else None
+            "default_config": self.get_default_config().name if self.get_default_config() else None,
+            "last_test_time": last_test_time,
+            "time_since_last_test": time_since_last_test
         }

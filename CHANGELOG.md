@@ -5,6 +5,59 @@ All notable changes to DICOM Fabricator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-09-01
+
+### Feature Release
+
+#### Recent Changes
+- **Version Bump**: Automated version bump to 1.1.0
+- **UID Copy Functionality**: Added copy-to-clipboard buttons for Study UIDs and Series UIDs throughout the interface
+- **Documentation Enhancement**: Added comprehensive screenshot documentation covering all major application features
+- **Change Summary**: This release includes recent improvements and bug fixes
+
+
+## [1.0.2] - 2025-09-01
+
+### Bug Fix Release
+
+#### Recent Changes
+- **Version Bump**: Automated version bump to 1.0.2
+- **Time Formatting**: Improved PACS query time display from decimal format (073242.076) to readable 24-hour format (07:32:42)
+- **UID Copy Functionality**: Added copy-to-clipboard buttons for Study UIDs and Series UIDs throughout the interface
+- **Change Summary**: This release includes recent improvements and bug fixes
+
+
+## [1.0.1] - 2025-01-XX
+
+### Documentation Enhancement
+
+#### Visual Documentation Framework
+- **Feature Overview Document**: Created comprehensive visual feature overview with screenshot placeholders
+- **Screenshot Directory**: Established organized structure for application screenshots
+- **README Enhancement**: Added main dashboard screenshot placeholder and feature overview link
+- **Documentation Guidelines**: Created screenshot capture guidelines and requirements
+- **Issue Tracking**: Created GitHub issue #1 for tracking visual documentation progress
+
+#### DICOM Tag Display Improvements
+- **Tag ID Sorting**: Modified DICOM tag display to sort by tag ID (group, element) instead of alphabetically
+- **Backend Sorting**: Updated `/api/dicom/headers/<filename>` endpoint to sort tags by group and element
+- **Frontend Sorting**: Updated JavaScript to sort DICOM tags by tag ID for consistent display
+- **Enhanced Readability**: Tags now display in logical DICOM order (0008, 0010, 0020, etc.)
+
+#### Git Workflow Setup
+
+#### Development Infrastructure
+- **Git Flow Branching Strategy**: Implemented proper branching workflow with main, develop, and feature branches
+- **Develop Branch**: Created integration branch for feature development
+- **Feature Branch Workflow**: Established process for creating feature branches from develop
+- **Git Workflow Documentation**: Comprehensive documentation of branching strategy and workflow
+- **README Updates**: Added Git workflow section to main documentation
+
+#### Branch Structure
+- **`main`** - Production-ready code, stable releases
+- **`develop`** - Integration branch for features, main development work  
+- **`feature/*`** - Feature branches for individual development work
+
 ## [1.0.0] - 2025-08-29
 
 ### Initial Public Release
@@ -55,7 +108,7 @@ The first public open-source release of DICOM Fabricator - a complete Flask web 
 - **PACS Page**: Configure and test PACS server connections with real-time status
 - **RESTful API**: Complete API with CORS support for all operations
 
-### 🛠️ Technical Infrastructure
+### Technical Infrastructure
 
 #### Backend Components
 - **Flask Web Application**: Complete RESTful API with comprehensive endpoints
@@ -75,7 +128,7 @@ The first public open-source release of DICOM Fabricator - a complete Flask web 
 - **Third-Party Licenses**: Full documentation of all dependency licenses
 - **API Documentation**: Complete endpoint documentation in CLAUDE.md
 
-### 🔧 Requirements
+### Requirements
 - Python 3.11+
 - Modern web browser for interface
 - Optional: Docker & Docker Compose for test PACS servers
@@ -106,7 +159,7 @@ DICOM_Fabricator/
 - Educational and training purposes
 - Quality assurance for system upgrades
 
-### ⚠️ Safety & Legal
+### Safety & Legal
 - All patient data is synthetic - no real PHI/PII
 - Generated files clearly marked as "TEST DATA"
 - Not for use in clinical environments

@@ -276,16 +276,8 @@ function renderPatientsTable(patients) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
-    // Initialize tosijs table
-    if (window.tosijs) {
-        patientsTable = new tosijs.Table('#patientsTable', {
-            sortable: true,
-            searchable: true,
-            paginate: true,
-            pageSize: 10,
-            responsive: true
-        });
-    }
+    // Note: tosijs table initialization removed due to library loading issues
+    // Standard HTML table is used instead
 }
 
 let searchTimeout;

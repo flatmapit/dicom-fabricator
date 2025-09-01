@@ -14,6 +14,8 @@ import csv
 from pathlib import Path
 from datetime import datetime
 import io
+import threading
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
@@ -38,25 +40,97 @@ pacs_manager = PacsConfigManager()
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# Global variables for activity tracking
+last_user_activity = time.time()
+user_activity_check_interval = 600  # 10 minutes
+active_testing_interval = 900  # 15 minutes when user is active
+inactive_testing_interval = 600  # 10 minutes when user is inactive
+
+def update_user_activity():
+    """Update the last user activity timestamp"""
+    global last_user_activity
+    last_user_activity = time.time()
+
+def is_user_active():
+    """Check if user has been active in the last 10 minutes"""
+    return (time.time() - last_user_activity) < user_activity_check_interval
+
+def auto_test_pacs_connections():
+    """Automatically test all PACS connections based on user activity"""
+    while True:
+        try:
+            current_time = time.time()
+            time_since_activity = current_time - last_user_activity
+            
+            # Determine if user is active
+            user_active = is_user_active()
+            
+            if user_active:
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] User active - Auto-testing PACS connections...")
+                next_interval = active_testing_interval
+            else:
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] User inactive ({time_since_activity/60:.1f} min) - Skipping PACS test")
+                next_interval = inactive_testing_interval
+            
+            # Only test if user is active
+            if user_active:
+                # Get all active PACS configurations
+                configs = pacs_manager.list_configs(active_only=True)
+                
+                for config in configs:
+                    try:
+                        print(f"  Testing {config.name} ({config.aec}@{config.host}:{config.port})...")
+                        result = pacs_manager.test_connection(config.id)
+                        
+                        if result['success']:
+                            print(f"    ✓ {config.name}: Connection successful")
+                        else:
+                            print(f"    ✗ {config.name}: {result.get('error', 'Connection failed')}")
+                            
+                    except Exception as e:
+                        print(f"    ✗ {config.name}: Error during testing - {str(e)}")
+                
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Auto-testing completed")
+            
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error in auto-testing: {str(e)}")
+        
+        # Wait for next interval
+        time.sleep(next_interval)
+
+# Start automatic PACS testing in background thread
+pacs_testing_thread = threading.Thread(target=auto_test_pacs_connections, daemon=True)
+pacs_testing_thread.start()
+
 @app.route('/')
 def index():
+    # Update user activity
+    update_user_activity()
     return render_template('query_pacs.html')
 
 @app.route('/patients')
 def patients_page():
+    # Update user activity
+    update_user_activity()
     return render_template('patients.html')
 
 @app.route('/generator')
 def generator_page():
+    # Update user activity
+    update_user_activity()
     return render_template('generator.html')
 
 
 @app.route('/pacs')
 def pacs_page():
+    # Update user activity
+    update_user_activity()
     return render_template('pacs.html')
 
 @app.route('/query-pacs')
 def query_pacs_page():
+    # Update user activity
+    update_user_activity()
     return render_template('query_pacs.html')
 
 @app.route('/api/patients', methods=['GET'])
@@ -840,13 +914,18 @@ def get_dicom_headers(filename):
             headers[tag_str] = {
                 'name': tag_name,
                 'value': value,
-                'vr': elem.VR if hasattr(elem, 'VR') else 'UN'
+                'vr': elem.VR if hasattr(elem, 'VR') else 'UN',
+                'group': elem.tag.group,
+                'element': elem.tag.element
             }
+        
+        # Sort headers by tag ID (group, then element)
+        sorted_headers = dict(sorted(headers.items(), key=lambda x: (x[1]['group'], x[1]['element'])))
         
         return jsonify({
             'success': True,
             'filename': filename,
-            'headers': headers
+            'headers': sorted_headers
         })
         
     except Exception as e:
@@ -1427,6 +1506,8 @@ def send_study_to_pacs():
 def list_pacs_configs():
     """List all PACS configurations"""
     try:
+        # Update user activity
+        update_user_activity()
         configs = pacs_manager.list_configs()
         return jsonify({
             'success': True,
@@ -1439,6 +1520,7 @@ def list_pacs_configs():
                     'port': config.port,
                     'aet': config.aet,
                     'aec': config.aec,
+                    'environment': config.environment,
                     'is_default': config.is_default,
                     'is_active': config.is_active,
                     'created_date': config.created_date,
@@ -1478,6 +1560,7 @@ def create_pacs_config():
             port=int(data['port']),
             aet=data['aet'],
             aec=data['aec'],
+            environment=data.get('environment', 'test'),
             is_default=data.get('is_default', False)
         )
         
@@ -1492,6 +1575,7 @@ def create_pacs_config():
                 'port': config.port,
                 'aet': config.aet,
                 'aec': config.aec,
+                'environment': config.environment,
                 'is_default': config.is_default,
                 'is_active': config.is_active,
                 'created_date': config.created_date,
@@ -1531,6 +1615,7 @@ def get_pacs_config(config_id):
                 'port': config.port,
                 'aet': config.aet,
                 'aec': config.aec,
+                'environment': config.environment,
                 'is_default': config.is_default,
                 'is_active': config.is_active,
                 'created_date': config.created_date,
@@ -1574,6 +1659,7 @@ def update_pacs_config(config_id):
                 'port': config.port,
                 'aet': config.aet,
                 'aec': config.aec,
+                'environment': config.environment,
                 'is_default': config.is_default,
                 'is_active': config.is_active,
                 'created_date': config.created_date,
@@ -1643,6 +1729,9 @@ def test_pacs_config(config_id):
 def get_pacs_stats():
     """Get PACS configuration statistics"""
     try:
+        # Update user activity
+        update_user_activity()
+        
         stats = pacs_manager.get_stats()
         return jsonify({
             'success': True,
@@ -1780,11 +1869,170 @@ def query_series_details():
             'error': f'Error querying series: {str(e)}'
         }), 500
 
+def query_pacs_via_rest(pacs_config, query_params):
+    """Query PACS server using REST API (fallback when C-FIND fails)"""
+    import requests
+    from datetime import datetime, timedelta
+    
+    # Orthanc credentials mapping
+    orthanc_credentials = {
+        'localhost:4242': ('test', 'test123'),
+        'localhost:4243': ('test2', 'test456'),
+        'localhost:4244': ('test', 'test123'),
+        'localhost:4245': ('orthanc', 'orthanc')
+    }
+    
+    source_key = f"{pacs_config.host}:{pacs_config.port}"
+    
+    if source_key not in orthanc_credentials:
+        return {
+            'success': False,
+            'error': f'No REST API credentials available for {pacs_config.name}',
+            'results': []
+        }
+    
+    username, password = orthanc_credentials[source_key]
+    web_port_mapping = {
+        4242: 8042,  # orthanc-test-pacs
+        4243: 8043,  # orthanc-test-pacs-2
+        4244: 8044,  # testpacs-test
+        4245: 8045   # testpacs-prod
+    }
+    web_port = web_port_mapping.get(pacs_config.port, pacs_config.port + 8000)
+    
+    try:
+        # Get all studies from Orthanc
+        response = requests.get(
+            f'http://localhost:{web_port}/studies',
+            auth=(username, password),
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            return {
+                'success': False,
+                'error': f'REST API request failed: HTTP {response.status_code}',
+                'results': []
+            }
+        
+        study_ids = response.json()
+        studies = []
+        
+        # Process each study
+        for study_id in study_ids[:query_params.get('max_results', 100)]:
+            try:
+                # Get study details
+                study_response = requests.get(
+                    f'http://localhost:{web_port}/studies/{study_id}',
+                    auth=(username, password),
+                    timeout=10
+                )
+                
+                if study_response.status_code == 200:
+                    study_data = study_response.json()
+                    main_tags = study_data.get('MainDicomTags', {})
+                    
+                    # Apply search filters
+                    if not matches_search_criteria(main_tags, query_params):
+                        continue
+                    
+                    # Format study result
+                    study_result = {
+                        'study_uid': main_tags.get('StudyInstanceUID', ''),
+                        'patient_name': main_tags.get('PatientName', ''),
+                        'patient_id': main_tags.get('PatientID', ''),
+                        'study_date': main_tags.get('StudyDate', ''),
+                        'study_time': main_tags.get('StudyTime', ''),
+                        'accession_number': main_tags.get('AccessionNumber', ''),
+                        'study_description': main_tags.get('StudyDescription', ''),
+                        'modality': main_tags.get('Modality', ''),
+                        'series_count': main_tags.get('NumberOfStudyRelatedSeries', ''),
+                        'instance_count': main_tags.get('NumberOfStudyRelatedInstances', ''),
+                        'series_uid': main_tags.get('SeriesInstanceUID', ''),
+                        'series_number': main_tags.get('SeriesNumber', ''),
+                        'series_description': main_tags.get('SeriesDescription', '')
+                    }
+                    
+                    studies.append(study_result)
+                    
+            except Exception as e:
+                print(f"DEBUG: Error processing study {study_id}: {str(e)}")
+                continue
+        
+        return {
+            'success': True,
+            'results': studies,
+            'error': None
+        }
+        
+    except requests.exceptions.RequestException as e:
+        return {
+            'success': False,
+            'error': f'REST API request failed: {str(e)}',
+            'results': []
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Unexpected error in REST API query: {str(e)}',
+            'results': []
+        }
+
+def matches_search_criteria(main_tags, query_params):
+    """Check if study matches search criteria"""
+    import re
+    
+    # Patient Name filter
+    patient_name = query_params.get('patient_name', '').strip()
+    if patient_name and patient_name != '*':
+        study_patient_name = main_tags.get('PatientName', '')
+        if not re.search(patient_name.replace('*', '.*'), study_patient_name, re.IGNORECASE):
+            return False
+    
+    # Patient ID filter
+    patient_id = query_params.get('patient_id', '').strip()
+    if patient_id and patient_id != '*':
+        study_patient_id = main_tags.get('PatientID', '')
+        if not re.search(patient_id.replace('*', '.*'), study_patient_id, re.IGNORECASE):
+            return False
+    
+    # Accession Number filter
+    accession = query_params.get('accession_number', '').strip()
+    if accession and accession != '*':
+        study_accession = main_tags.get('AccessionNumber', '')
+        if not re.search(accession.replace('*', '.*'), study_accession, re.IGNORECASE):
+            return False
+    
+    # Study UID filter
+    study_uid = query_params.get('study_uid', '').strip()
+    if study_uid:
+        study_study_uid = main_tags.get('StudyInstanceUID', '')
+        if study_uid != study_study_uid:
+            return False
+    
+    # Date range filter
+    days_ago = query_params.get('days_ago', 0)
+    if days_ago and days_ago > 0:
+        study_date = main_tags.get('StudyDate', '')
+        if study_date:
+            try:
+                study_datetime = datetime.strptime(study_date, '%Y%m%d')
+                cutoff_date = datetime.now() - timedelta(days=days_ago)
+                if study_datetime < cutoff_date:
+                    return False
+            except ValueError:
+                pass  # Skip date filtering if date format is invalid
+    
+    return True
+
 @app.route('/api/pacs/query', methods=['POST'])
 def query_pacs():
     """Comprehensive PACS query with multiple search criteria"""
     import subprocess
     from datetime import datetime, timedelta
+    
+    # Update user activity
+    update_user_activity()
     
     data = request.json
     pacs_config_id = data.get('pacs_config_id')
@@ -1861,16 +2109,21 @@ def query_pacs():
         search_params.extend(['-k', 'PatientName=*'])
     
     # Default query fields to retrieve (only add if not already present as search criteria)
-    # Use a minimal set of essential fields that most PACS servers support
-    # Note: Some PACS servers may not have all fields
+    # Include more fields to match the local DICOM table display
     default_fields = [
         'PatientName',
         'PatientID', 
         'StudyDate',
+        'StudyTime',
         'StudyDescription',
         'AccessionNumber',
-        'StudyInstanceUID'
-        # Removed SeriesInstanceUID and Modality as they may not be available in all PACS servers
+        'StudyInstanceUID',
+        'Modality',
+        'SeriesInstanceUID',
+        'SeriesNumber',
+        'SeriesDescription',
+        'NumberOfStudyRelatedSeries',
+        'NumberOfStudyRelatedInstances'
     ]
     
     # Check which fields are already present as search criteria
@@ -1897,15 +2150,15 @@ def query_pacs():
             pacs_config.host, str(pacs_config.port),
         ]
         
-        # Only add --cancel for PACS servers that support it
-        # Orthanc Test PACS 2 doesn't support --cancel properly
-        if pacs_config.name != "Orthanc Test PACS 2":
-            cmd.insert(3, '--cancel')
-            cmd.insert(4, str(max_results))
+        # Add --cancel parameter to limit results (supported by most PACS servers)
+        cmd.insert(3, '--cancel')
+        cmd.insert(4, str(max_results))
         
         # Add query level flag
         if query_level == 'STUDY':
             cmd.append('-S')  # Study level query flag
+        elif query_level == 'SERIES':
+            cmd.append('-P')  # Patient root information model for series-level queries
         
         cmd.extend(search_params)
         
@@ -1936,6 +2189,46 @@ def query_pacs():
             
             print(f"DEBUG: Parsed {len(studies)} studies from PACS response")
             
+            # Apply application-side result limiting as fallback
+            # This ensures we respect the max_results limit even if PACS doesn't support --cancel
+            if len(studies) > max_results:
+                print(f"DEBUG: PACS returned {len(studies)} results, limiting to {max_results}")
+                studies = studies[:max_results]
+            
+            # If no results from C-FIND, try REST API fallback for Orthanc PACS
+            if len(studies) == 0 and pacs_config.port in [4242, 4243, 4244, 4245]:
+                print(f"DEBUG: No C-FIND results, attempting REST API fallback for {pacs_config.name}")
+                rest_results = query_pacs_via_rest(pacs_config, data)
+                
+                if rest_results['success'] and len(rest_results['results']) > 0:
+                    print(f"DEBUG: REST API fallback successful, returned {len(rest_results['results'])} studies")
+                    return jsonify({
+                        'success': True,
+                        'results': rest_results['results'],
+                        'query_info': {
+                            'pacs_name': pacs_config.name,
+                            'query_level': query_level,
+                            'total_results': len(rest_results['results']),
+                            'max_results_requested': max_results,
+                            'search_criteria': {
+                                'patient_name': data.get('patient_name', ''),
+                                'patient_id': data.get('patient_id', ''),
+                                'accession_number': data.get('accession_number', ''),
+                                'study_uid': data.get('study_uid', ''),
+                                'series_uid': data.get('series_uid', ''),
+                                'days_ago': days_ago
+                            },
+                            'method': 'REST API (C-FIND fallback)'
+                        },
+                        'command_output': {
+                            'command': cmd_string,
+                            'output': result.stdout,
+                            'stderr': result.stderr,
+                            'exit_code': result.returncode,
+                            'fallback_used': True
+                        }
+                    })
+            
             return jsonify({
                 'success': True,
                 'results': studies,
@@ -1943,6 +2236,7 @@ def query_pacs():
                     'pacs_name': pacs_config.name,
                     'query_level': query_level,
                     'total_results': len(studies),
+                    'max_results_requested': max_results,
                     'search_criteria': {
                         'patient_name': data.get('patient_name', ''),
                         'patient_id': data.get('patient_id', ''),
@@ -1960,9 +2254,42 @@ def query_pacs():
                 }
             })
         else:
-            return jsonify({
-                'success': False,
-                'error': 'PACS query failed',
+            # Try REST API fallback for Orthanc PACS servers
+            print(f"DEBUG: C-FIND failed, attempting REST API fallback for {pacs_config.name}")
+            rest_results = query_pacs_via_rest(pacs_config, query_params)
+            
+            if rest_results['success']:
+                print(f"DEBUG: REST API fallback successful, returned {len(rest_results['results'])} studies")
+                return jsonify({
+                    'success': True,
+                    'results': rest_results['results'],
+                    'query_info': {
+                        'pacs_name': pacs_config.name,
+                        'query_level': query_level,
+                        'total_results': len(rest_results['results']),
+                        'max_results_requested': max_results,
+                        'search_criteria': {
+                            'patient_name': data.get('patient_name', ''),
+                            'patient_id': data.get('patient_id', ''),
+                            'accession_number': data.get('accession_number', ''),
+                            'study_uid': data.get('study_uid', ''),
+                            'series_uid': data.get('series_uid', ''),
+                            'days_ago': days_ago
+                        },
+                        'method': 'REST API (C-FIND fallback)'
+                    },
+                    'command_output': {
+                        'command': cmd_string,
+                        'output': result.stdout,
+                        'stderr': result.stderr,
+                        'exit_code': result.returncode,
+                        'fallback_used': True
+                    }
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'PACS query failed',
                 'details': {
                     'stdout': result.stdout,
                     'stderr': result.stderr,
@@ -2027,6 +2354,8 @@ def parse_dicom_query_output(output, query_level):
                 'AccessionNumber': 'accession_number',
                 'StudyInstanceUID': 'study_uid',
                 'SeriesInstanceUID': 'series_uid',
+                'SeriesNumber': 'series_number',
+                'SeriesDescription': 'series_description',
                 'Modality': 'modality',
                 'NumberOfStudyRelatedSeries': 'series_count',
                 'NumberOfStudyRelatedInstances': 'instance_count',
@@ -2052,11 +2381,14 @@ def parse_dicom_query_output(output, query_level):
                 "(0010,0010)": "patient_name",      # PatientName
                 "(0010,0020)": "patient_id",        # PatientID
                 "(0008,0020)": "study_date",        # StudyDate
+                "(0008,0030)": "study_time",        # StudyTime
                 "(0008,1030)": "study_description", # StudyDescription
                 "(0008,0050)": "accession_number",  # AccessionNumber
+                "(0008,0060)": "modality",          # Modality
                 "(0020,000d)": "study_uid",         # StudyInstanceUID
                 "(0020,000e)": "series_uid",        # SeriesInstanceUID
-                "(0008,0060)": "modality"           # Modality
+                "(0020,0011)": "series_number",     # SeriesNumber
+                "(0008,103e)": "series_description" # SeriesDescription
             }
             
             if tag_coords in tag_mapping:
@@ -2103,7 +2435,10 @@ def format_study_result(study_data):
         try:
             # Convert HHMMSS to readable format
             time_obj = datetime.strptime(study_time[:6], '%H%M%S')
-            study_data['formatted_time'] = time_obj.strftime('%H:%M:%S')
+            formatted_time = time_obj.strftime('%H:%M:%S')
+            study_data['formatted_time'] = formatted_time
+            # Replace the original time with formatted version for display
+            study_data['study_time'] = formatted_time
         except:
             study_data['formatted_time'] = study_time
     else:
@@ -2127,7 +2462,253 @@ def format_study_result(study_data):
             except:
                 study_data[field] = 0
     
+    # Ensure modality is properly set
+    if 'modality' not in study_data or not study_data['modality']:
+        # Try to get modality from series if available
+        if 'series_description' in study_data and study_data['series_description']:
+            # Extract modality from series description if it contains modality info
+            series_desc = study_data['series_description'].upper()
+            if 'CT' in series_desc:
+                study_data['modality'] = 'CT'
+            elif 'MR' in series_desc:
+                study_data['modality'] = 'MR'
+            elif 'DX' in series_desc or 'CR' in series_desc:
+                study_data['modality'] = 'DX'
+            elif 'US' in series_desc:
+                study_data['modality'] = 'US'
+            else:
+                study_data['modality'] = 'Unknown'
+        else:
+            study_data['modality'] = 'Unknown'
+    
+    # Ensure series and instance counts are set
+    if 'series_count' not in study_data or not study_data['series_count']:
+        study_data['series_count'] = 0
+    if 'instance_count' not in study_data or not study_data['instance_count']:
+        study_data['instance_count'] = 0
+    
     return study_data
+
+def check_pacs_routing(source_pacs, destination_pacs):
+    """
+    Pre-flight check to verify if destination PACS is reachable from source PACS.
+    This helps detect routing issues before attempting C-MOVE operations.
+    """
+    import subprocess
+    
+    try:
+        # Test 1: Check if destination PACS is reachable via DICOM echo
+        echo_cmd = [
+            'echoscu',
+            '-aet', 'DICOMFAB',
+            '-aec', destination_pacs.aec,
+            destination_pacs.host, str(destination_pacs.port)
+        ]
+        
+        echo_result = subprocess.run(
+            echo_cmd,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if echo_result.returncode != 0:
+            return {
+                'success': False,
+                'error': f'Destination PACS {destination_pacs.name} ({destination_pacs.aec}@{destination_pacs.host}:{destination_pacs.port}) is not reachable',
+                'details': {
+                    'echo_command': ' '.join(echo_cmd),
+                    'echo_exit_code': echo_result.returncode,
+                    'echo_stderr': echo_result.stderr
+                }
+            }
+        
+        # Test 2: Check if source PACS can reach destination PACS
+        # This simulates what the source PACS would need to do for C-MOVE
+        source_echo_cmd = [
+            'echoscu',
+            '-aet', source_pacs.aec,
+            '-aec', destination_pacs.aec,
+            destination_pacs.host, str(destination_pacs.port)
+        ]
+        
+        source_echo_result = subprocess.run(
+            source_echo_cmd,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if source_echo_result.returncode != 0:
+            return {
+                'success': False,
+                'error': f'Source PACS {source_pacs.name} cannot reach destination PACS {destination_pacs.name}. This indicates a routing configuration issue.',
+                'details': {
+                    'source_echo_command': ' '.join(source_echo_cmd),
+                    'source_echo_exit_code': source_echo_result.returncode,
+                    'source_echo_stderr': source_echo_result.stderr,
+                    'suggestion': 'The source PACS may not have the destination PACS configured in its routing table.'
+                }
+            }
+        
+        return {
+            'success': True,
+            'message': f'Routing check passed: {source_pacs.name} can reach {destination_pacs.name}'
+        }
+        
+    except subprocess.TimeoutExpired:
+        return {
+            'success': False,
+            'error': f'Routing check timeout: Destination PACS {destination_pacs.name} is not responding',
+            'details': {
+                'timeout': '10 seconds',
+                'suggestion': 'Check if the destination PACS server is running and accessible.'
+            }
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Routing check failed: {str(e)}',
+            'details': {
+                'exception': str(e),
+                'suggestion': 'Check network connectivity and PACS server configurations.'
+            }
+        }
+
+@app.route('/api/pacs/configure-routing', methods=['POST'])
+def configure_pacs_routing():
+    """Configure DICOM routing between PACS servers"""
+    data = request.get_json()
+    
+    source_pacs_id = data.get('source_pacs_id')
+    destination_pacs_id = data.get('destination_pacs_id')
+    
+    if not all([source_pacs_id, destination_pacs_id]):
+        return jsonify({
+            'success': False,
+            'error': 'Missing required parameters: source_pacs_id, destination_pacs_id'
+        }), 400
+    
+    # Get PACS configurations
+    source_pacs = pacs_manager.get_config(source_pacs_id)
+    destination_pacs = pacs_manager.get_config(destination_pacs_id)
+    
+    if not source_pacs:
+        return jsonify({
+            'success': False,
+            'error': 'Source PACS configuration not found'
+        }), 404
+    
+    if not destination_pacs:
+        return jsonify({
+            'success': False,
+            'error': 'Destination PACS configuration not found'
+        }), 404
+    
+    try:
+        # Try to configure routing using Orthanc REST API if available
+        routing_result = configure_orthanc_routing(source_pacs, destination_pacs)
+        
+        if routing_result['success']:
+            return jsonify({
+                'success': True,
+                'message': f'Routing configured from {source_pacs.name} to {destination_pacs.name}',
+                'details': routing_result.get('details', {})
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': routing_result['error'],
+                'details': routing_result.get('details', {}),
+                'suggestion': 'Manual configuration may be required. Check PACS server documentation for routing setup instructions.'
+            }), 400
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to configure routing: {str(e)}',
+            'suggestion': 'Manual configuration may be required.'
+        }), 500
+
+def configure_orthanc_routing(source_pacs, destination_pacs):
+    """Configure routing between Orthanc PACS servers"""
+    import requests
+    
+    # Orthanc credentials (from docker-compose.yml and default settings)
+    orthanc_credentials = {
+        'localhost:4242': ('test', 'test123'),
+        'localhost:4243': ('test2', 'test456'),
+        'localhost:4244': ('test', 'test123'),  # Assuming same credentials
+        'localhost:4245': ('orthanc', 'orthanc')   # Default Orthanc credentials
+    }
+    
+    source_key = f"{source_pacs.host}:{source_pacs.port}"
+    dest_key = f"{destination_pacs.host}:{destination_pacs.port}"
+    
+    if source_key not in orthanc_credentials:
+        return {
+            'success': False,
+            'error': f'No credentials available for source PACS {source_pacs.name}',
+            'details': {'source_pacs': source_key}
+        }
+    
+    username, password = orthanc_credentials[source_key]
+    # Orthanc web port mapping from docker-compose.yml
+    web_port_mapping = {
+        4242: 8042,  # orthanc-test-pacs
+        4243: 8043,  # orthanc-test-pacs-2
+        4244: 8044,  # testpacs-test
+        4245: 8045   # testpacs-prod
+    }
+    web_port = web_port_mapping.get(source_pacs.port, source_pacs.port + 8000)
+    
+    try:
+        # Add destination PACS to source PACS modalities
+        routing_data = {
+            'AET': destination_pacs.aec,
+            'Host': destination_pacs.host,
+            'Port': destination_pacs.port
+        }
+        
+        response = requests.put(
+            f'http://localhost:{web_port}/modalities/{destination_pacs.aec}',
+            json=routing_data,
+            auth=(username, password),
+            timeout=10
+        )
+        
+        if response.status_code in [200, 201]:
+            return {
+                'success': True,
+                'message': f'Routing configured from {source_pacs.name} to {destination_pacs.name}',
+                'details': {
+                    'source_pacs': source_pacs.name,
+                    'destination_pacs': destination_pacs.name,
+                    'routing_data': routing_data
+                }
+            }
+        else:
+            return {
+                'success': False,
+                'error': f'Failed to configure routing: HTTP {response.status_code}',
+                'details': {
+                    'response_text': response.text,
+                    'routing_data': routing_data
+                }
+            }
+            
+    except requests.exceptions.RequestException as e:
+        return {
+            'success': False,
+            'error': f'Network error configuring routing: {str(e)}',
+            'details': {'exception': str(e)}
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Unexpected error configuring routing: {str(e)}',
+            'details': {'exception': str(e)}
+        }
 
 @app.route('/api/pacs/c-move', methods=['POST'])
 def c_move_study():
@@ -2161,6 +2742,16 @@ def c_move_study():
             'success': False,
             'error': 'Destination PACS configuration not found'
         }), 404
+    
+    # Pre-flight check: Test if destination PACS is reachable from source PACS
+    routing_check_result = check_pacs_routing(source_pacs, destination_pacs)
+    if not routing_check_result['success']:
+        return jsonify({
+            'success': False,
+            'error': routing_check_result['error'],
+            'details': routing_check_result.get('details', {}),
+            'suggestion': 'Consider using C-STORE to directly send the study to the destination PACS, or configure DICOM routing between the PACS servers.'
+        }), 400
     
     try:
         # Build movescu command for C-MOVE operation
@@ -2235,9 +2826,22 @@ def c_move_study():
                 }
             })
         else:
+            # Provide more helpful error messages based on common C-MOVE issues
+            error_message = 'C-MOVE operation failed - check command output for details'
+            
+            # Check for specific error patterns
+            if 'UnableToProcess' in result.stderr:
+                error_message = 'C-MOVE failed: Source PACS cannot process the move request. This usually means the source PACS is not configured to send to the destination PACS.'
+            elif 'Association Request Failed' in result.stderr:
+                error_message = 'C-MOVE failed: Cannot connect to source PACS. Check if the PACS server is running and accessible.'
+            elif 'No Move Destination' in result.stderr:
+                error_message = 'C-MOVE failed: Destination PACS not found or not configured in source PACS routing table.'
+            elif 'Move SCP Failed' in result.stderr:
+                error_message = 'C-MOVE failed: Source PACS does not support C-MOVE operations or is not properly configured.'
+            
             return jsonify({
                 'success': False,
-                'error': 'C-MOVE operation failed - check command output for details',
+                'error': error_message,
                 'details': {
                     'stdout': result.stdout,
                     'stderr': result.stderr,
@@ -2248,7 +2852,8 @@ def c_move_study():
                     'output': result.stdout,
                     'stderr': result.stderr,
                     'exit_code': result.returncode
-                }
+                },
+                'suggestion': 'Consider using C-STORE to directly send the study to the destination PACS, or configure DICOM routing between the PACS servers.'
             }), 500
             
     except subprocess.TimeoutExpired:
