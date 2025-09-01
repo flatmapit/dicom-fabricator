@@ -27,11 +27,7 @@ This project uses the following third-party libraries and frameworks. This file 
 - **Source**: https://github.com/sumn2u/tosijs
 - **Usage**: Table sorting and management (currently replaced with custom implementation)
 
-### tosijs-ui
-- **License**: BSD-3-Clause License
-- **Source**: https://github.com/tonioloewald/tosijs-ui
-- **Usage**: Enhanced UI components for tosijs (currently disabled due to loading issues)
-- **Note**: Library is commented out in base template but may be re-enabled in future versions
+
 
 ## Python Dependencies
 

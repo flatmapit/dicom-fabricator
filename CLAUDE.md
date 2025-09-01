@@ -245,7 +245,7 @@ storescu -aet DICOMFAB -aec TESTPACS localhost 4242 dicom_output/*.dcm
 - Patient registry persisted in data/patient_registry.json
 - PACS configurations persisted in data/pacs_config.json
 - DCMTK tools (storescu, echoscu, findscu) required for PACS operations
-- tosijs and tosijs-ui loaded from CDN for table management features (tosijs-ui currently disabled due to loading issues)
+- tosijs loaded from CDN for table management features
 - Bootstrap 5.1.3 and Font Awesome 6.0 for UI components
 - Automatic PACS testing runs on page load (can take 10-20 seconds)
 - Progress monitoring uses async sidebar notifications
