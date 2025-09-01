@@ -287,53 +287,8 @@ async function loadPacsConfigs() {
         // Store all configs globally for filtering
         window.allPacsConfigs = data.configs || [];
         
-        // Load PACS configs with environment filtering
-        const select = document.getElementById('queryPacsSelect');
-        select.innerHTML = '';
-        
-        if (window.allPacsConfigs && window.allPacsConfigs.length > 0) {
-            // Get selected environment
-            const selectedEnv = document.querySelector('input[name="envFilter"]:checked')?.value || 'test';
-            
-            // Filter configs by environment
-            const filteredConfigs = window.allPacsConfigs.filter(config => {
-                if (selectedEnv === 'both') return true;
-                return config.environment === selectedEnv;
-            });
-            
-            filteredConfigs.forEach((config, index) => {
-                const option = document.createElement('option');
-                option.value = config.id;
-                option.textContent = `${config.name} (${config.host}:${config.port})`;
-                option.dataset.pacsName = config.name;
-                option.dataset.pacsHost = config.host;
-                option.dataset.pacsPort = config.port;
-                option.dataset.environment = config.environment;
-                
-                // Apply color coding
-                if (config.environment === 'production') {
-                    option.style.color = '#6f42c1'; // Dark purple
-                    option.style.fontWeight = 'bold';
-                } else if (config.environment === 'test') {
-                    option.style.color = '#198754'; // Dark green
-                    option.style.fontWeight = 'bold';
-                }
-                
-                if (config.is_default) {
-                    option.selected = true;
-                }
-                
-                select.appendChild(option);
-            });
-            
-            // Use standard select for now (tosijs is causing issues)
-            select.addEventListener('change', function() {
-                updateSelectedPacsHint();
-            });
-            
-        } else {
-            select.innerHTML = '<option value="">No PACS configurations available</option>';
-        }
+        // Apply environment filtering
+        filterPacsByEnvironment();
         
     } catch (error) {
         console.error('Error loading PACS configs:', error);
@@ -402,30 +357,30 @@ function filterPacsByEnvironment() {
         
         select.appendChild(option);
     });
-            
-            // Use standard select for now (tosijs is causing issues)
-            select.addEventListener('change', function() {
-                updateSelectedPacsHint();
-            });
-            
-            // Update hint for initial selection
-            updateSelectedPacsHint();
-            
-            // Add a more robust change detection
-            select.addEventListener('change', function() {
-                setTimeout(() => updateSelectedPacsHint(), 50);
-            });
-            
-            // Also listen for clicks on the select
-            select.addEventListener('click', function() {
-                setTimeout(() => updateSelectedPacsHint(), 100);
-            });
-        }
-    } catch (error) {
-        console.error('Error loading PACS configs:', error);
-        console.error('Error details:', error.message, error.stack);
-        document.getElementById('queryPacsSelect').innerHTML = '<option value="">Error loading PACS configs</option>';
-    }
+    
+    // Setup event listeners for the select
+    setupPacsSelectEventListeners(select);
+    
+    // Update hint for initial selection
+    updateSelectedPacsHint();
+}
+
+function setupPacsSelectEventListeners(select) {
+    // Remove existing listeners to avoid duplicates
+    select.removeEventListener('change', handlePacsSelectChange);
+    select.removeEventListener('click', handlePacsSelectClick);
+    
+    // Add new listeners
+    select.addEventListener('change', handlePacsSelectChange);
+    select.addEventListener('click', handlePacsSelectClick);
+}
+
+function handlePacsSelectChange() {
+    updateSelectedPacsHint();
+}
+
+function handlePacsSelectClick() {
+    setTimeout(() => updateSelectedPacsHint(), 100);
 }
 
 function updateSelectedPacsHint(selectedValues = null) {
