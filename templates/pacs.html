@@ -186,14 +186,7 @@ let pacsTable = null;
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing custom table implementation');
     
-    // Initialize the table
-    const tableElement = document.querySelector('#pacsTable');
-    if (tableElement) {
-        pacsTable = new CustomTable('#pacsTable');
-        console.log('Custom table initialized successfully');
-    }
-    
-    // Load PACS configurations
+    // Load PACS configurations (table will be initialized after data loads)
     loadPacsConfigurations();
 });
 </script>
@@ -529,13 +522,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
             document.getElementById('pacsTableContainer').innerHTML = tableHtml;
 
-                    // Initialize the custom table
-        if (pacsTable) {
-            pacsTable.setData(configs);
-            console.log('Custom table data set successfully');
-        } else {
-            console.warn('Custom table instance not initialized, cannot set data.');
-        }
+            // Initialize the custom table after the HTML is rendered
+            const tableElement = document.querySelector('#pacsTable');
+            if (tableElement) {
+                if (pacsTable) {
+                    pacsTable.destroy(); // Clean up previous instance
+                }
+                pacsTable = new CustomTable('#pacsTable');
+                pacsTable.setData(configs);
+                console.log('Custom table initialized and data set successfully');
+            } else {
+                console.warn('Table element not found, cannot initialize custom table.');
+            }
     }
 
     // Add event listeners and initialization
