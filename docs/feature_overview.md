@@ -65,6 +65,7 @@ View and analyze generated DICOM files with metadata display.
 - **Image Preview**: See DICOM image thumbnails
 - **Search & Filter**: Find specific studies or series
 - **Export Options**: Download DICOM files or metadata
+- **C-MOVE**: C-MOVE selected DICOM studies to a different PACS.
 
 ## PACS Integration
 
@@ -86,7 +87,7 @@ Search and retrieve studies from connected PACS servers.
 ![PACS Query](images/pacs-query.png)
 
 **Common Activities:**
-- **Study Search**: Query PACS servers for specific studies
+- **Study Search**: Query one or many PACS servers for specific criteria
 - **Advanced Filters**: Use multiple criteria for precise searches
 - **Result Display**: View query results with study details
 - **Study Retrieval**: Download studies from PACS servers

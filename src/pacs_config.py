@@ -21,6 +21,7 @@ class PacsConfiguration:
     port: int
     aet: str  # Application Entity Title (our AET when connecting)
     aec: str  # Called Application Entity (PACS AET)
+    environment: str = "test"  # test, production, or both
     is_default: bool = False
     is_active: bool = True
     created_date: str = ""
@@ -48,7 +49,7 @@ class PacsConfigManager:
         """Ensure default PACS configurations exist"""
         if not self.configs:
             # Add default configurations
-            orthanc_config = PacsConfiguration(
+            orthanc_test_config = PacsConfiguration(
                 id=str(uuid.uuid4()),
                 name="Orthanc Test PACS",
                 description="Local Orthanc PACS server for testing",
@@ -56,24 +57,54 @@ class PacsConfigManager:
                 port=4242,
                 aet="DICOMFAB",
                 aec="ORTHANC",
+                environment="test",
                 is_default=True,
                 is_active=True
             )
             
-            testpacs_config = PacsConfiguration(
+            orthanc_prod_config = PacsConfiguration(
                 id=str(uuid.uuid4()),
-                name="Test PACS",
-                description="Generic test PACS configuration",
+                name="Orthanc Production PACS",
+                description="Local Orthanc PACS server for production",
                 host="localhost",
-                port=4242,
-                aet="DICOMFAB", 
-                aec="TESTPACS",
+                port=4243,
+                aet="DICOMFAB",
+                aec="ORTHANC_PROD",
+                environment="production",
                 is_default=False,
                 is_active=True
             )
             
-            self.configs[orthanc_config.id] = orthanc_config
-            self.configs[testpacs_config.id] = testpacs_config
+            testpacs_test_config = PacsConfiguration(
+                id=str(uuid.uuid4()),
+                name="Test PACS",
+                description="Generic test PACS configuration",
+                host="localhost",
+                port=4244,
+                aet="DICOMFAB", 
+                aec="TESTPACS",
+                environment="test",
+                is_default=False,
+                is_active=True
+            )
+            
+            testpacs_prod_config = PacsConfiguration(
+                id=str(uuid.uuid4()),
+                name="Production PACS",
+                description="Production PACS configuration",
+                host="localhost",
+                port=4245,
+                aet="DICOMFAB", 
+                aec="PRODPACS",
+                environment="production",
+                is_default=False,
+                is_active=True
+            )
+            
+            self.configs[orthanc_test_config.id] = orthanc_test_config
+            self.configs[orthanc_prod_config.id] = orthanc_prod_config
+            self.configs[testpacs_test_config.id] = testpacs_test_config
+            self.configs[testpacs_prod_config.id] = testpacs_prod_config
             self.save_configs()
     
     def load_configs(self):

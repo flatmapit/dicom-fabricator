@@ -21,7 +21,19 @@
                 <form id="pacsQueryForm">
                     <div class="row mb-2">
                         <div class="col-md-6">
-                            <label for="queryPacsSelect" class="form-label small mb-1">Select PACS</label>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="queryPacsSelect" class="form-label small mb-0">Select PACS</label>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Environment filter">
+                                    <input type="radio" class="btn-check" name="envFilter" id="envTest" value="test" checked>
+                                    <label class="btn btn-outline-success btn-sm" for="envTest">Test</label>
+                                    
+                                    <input type="radio" class="btn-check" name="envFilter" id="envProd" value="production">
+                                    <label class="btn btn-outline-primary btn-sm" for="envProd">Prod</label>
+                                    
+                                    <input type="radio" class="btn-check" name="envFilter" id="envBoth" value="both">
+                                    <label class="btn btn-outline-secondary btn-sm" for="envBoth">Both</label>
+                                </div>
+                            </div>
                             <select id="queryPacsSelect" class="form-select form-select-sm" multiple>
                                 <option value="">Loading...</option>
                             </select>
@@ -236,12 +248,29 @@ document.addEventListener('DOMContentLoaded', function() {
         queryPacs();
     });
     
+    // Initialize environment filter
+    initializeEnvironmentFilter();
+    
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 });
+
+function initializeEnvironmentFilter() {
+    // Load saved environment preference
+    const savedEnv = localStorage.getItem('pacs-environment-filter') || 'test';
+    document.querySelector(`input[name="envFilter"][value="${savedEnv}"]`).checked = true;
+    
+    // Add event listeners for environment filter changes
+    document.querySelectorAll('input[name="envFilter"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            localStorage.setItem('pacs-environment-filter', this.value);
+            filterPacsByEnvironment();
+        });
+    });
+}
 
 async function loadPacsConfigs() {
     try {
@@ -251,35 +280,82 @@ async function loadPacsConfigs() {
         const data = await response.json();
         console.log('PACS configs data:', data);
         
-        const select = document.getElementById('queryPacsSelect');
-        select.innerHTML = '';
+        // Store all configs globally for filtering
+        window.allPacsConfigs = data.configs || [];
         
-        if (data.success && data.configs.length > 0) {
-            let hasRememberedSelection = false;
-            const rememberedPacs = window.PacsMemory ? window.PacsMemory.getRememberedPacs() : null;
-            
-            data.configs.forEach(config => {
-                const option = document.createElement('option');
-                option.value = config.id;
-                option.textContent = `${config.name} (${config.host}:${config.port})`;
-                option.dataset.pacsName = config.name;
-                option.dataset.pacsHost = config.host;
-                option.dataset.pacsPort = config.port;
-                
-                // Prefer remembered selection over default
-                if (rememberedPacs && config.id === rememberedPacs) {
-                    option.selected = true;
-                    hasRememberedSelection = true;
-                } else if (!hasRememberedSelection && config.is_default) {
-                    option.selected = true;
-                }
-                
-                select.appendChild(option);
-            });
+        // Apply environment filter
+        filterPacsByEnvironment();
+        
+    } catch (error) {
+        console.error('Error loading PACS configs:', error);
+        console.error('Error details:', error.message, error.stack);
+        document.getElementById('queryPacsSelect').innerHTML = '<option value="">Error loading PACS configs</option>';
+    }
+}
+
+function filterPacsByEnvironment() {
+    const select = document.getElementById('queryPacsSelect');
+    const selectedEnv = document.querySelector('input[name="envFilter"]:checked').value;
+    
+    // Clear current options
+    select.innerHTML = '';
+    
+    if (!window.allPacsConfigs || window.allPacsConfigs.length === 0) {
+        select.innerHTML = '<option value="">No PACS configurations available</option>';
+        return;
+    }
+    
+    // Filter configs by environment
+    const filteredConfigs = window.allPacsConfigs.filter(config => {
+        if (selectedEnv === 'both') return true;
+        return config.environment === selectedEnv;
+    });
+    
+    if (filteredConfigs.length === 0) {
+        select.innerHTML = `<option value="">No ${selectedEnv} PACS configurations available</option>`;
+        return;
+    }
+    
+    let hasRememberedSelection = false;
+    const rememberedPacs = window.PacsMemory ? window.PacsMemory.getRememberedPacs() : null;
+    
+    filteredConfigs.forEach(config => {
+        const option = document.createElement('option');
+        option.value = config.id;
+        option.textContent = `${config.name} (${config.host}:${config.port})`;
+        option.dataset.pacsName = config.name;
+        option.dataset.pacsHost = config.host;
+        option.dataset.pacsPort = config.port;
+        option.dataset.environment = config.environment;
+        
+        // Apply color coding based on environment
+        if (config.environment === 'production') {
+            option.style.color = '#6f42c1'; // Dark purple
+            option.style.fontWeight = 'bold';
+        } else if (config.environment === 'test') {
+            option.style.color = '#198754'; // Dark green
+            option.style.fontWeight = 'bold';
+        }
+        
+        // Prefer remembered selection over default
+        if (rememberedPacs && config.id === rememberedPacs) {
+            option.selected = true;
+            hasRememberedSelection = true;
+        } else if (!hasRememberedSelection && config.is_default) {
+            option.selected = true;
+        }
+        
+        select.appendChild(option);
+    });
             
             // Initialize tosijs-ui for multi-select with search
             if (window.tosijs) {
                 setTimeout(() => {
+                    // Destroy existing instance if it exists
+                    if (select.tosijsInstance) {
+                        select.tosijsInstance.destroy();
+                    }
+                    
                     window.tosijs('#queryPacsSelect', {
                         search: {
                             enabled: true,
