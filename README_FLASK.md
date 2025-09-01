@@ -108,13 +108,14 @@ DICOM_Fabricator/
 
 ## tosijs Integration
 
-The application uses [tosijs](https://github.com/tonioloewald/tosijs) for enhanced table functionality:
+The application uses [tosijs](https://github.com/tonioloewald/tosijs) and [tosijs-ui](https://github.com/tonioloewald/tosijs-ui) for enhanced table functionality:
 
 - **Automatic Features**:
   - Column sorting (click headers)
   - Global search box
   - Pagination controls
   - Responsive table layout
+  - Enhanced UI components (tosijs-ui)
 
 - **Configuration**:
   ```javascript
@@ -126,6 +127,8 @@ The application uses [tosijs](https://github.com/tonioloewald/tosijs) for enhanc
       responsive: true
   });
   ```
+
+- **Note**: tosijs-ui is currently disabled due to loading issues but may be re-enabled in future versions
 
 ## Running with Docker PACS
 
@@ -156,6 +159,7 @@ The Flask app runs in debug mode by default, enabling:
 - jQuery 3.6.0
 - Bootstrap Bundle 5.1.3
 - tosijs (latest from CDN)
+- tosijs-ui (currently disabled due to loading issues)
 
 ## Security Notes
 

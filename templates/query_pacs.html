@@ -252,6 +252,121 @@
 </div>
 
 <script>
+// Custom table implementation for query results
+class CustomTable {
+    constructor(selector, options = {}) {
+        this.table = document.querySelector(selector);
+        this.options = options;
+        this.data = [];
+        this.currentSort = { column: null, direction: 'asc' };
+        
+        if (this.table) {
+            this.init();
+        }
+    }
+    
+    init() {
+        // Add custom table class
+        this.table.classList.add('custom-table');
+        
+        // Make headers sortable
+        const headers = this.table.querySelectorAll('th');
+        headers.forEach((header, index) => {
+            if (header.textContent.trim() !== '') {
+                header.classList.add('sortable');
+                header.style.cursor = 'pointer';
+                header.addEventListener('click', () => this.sortByColumn(index));
+            }
+        });
+    }
+    
+    sortByColumn(columnIndex) {
+        const headers = this.table.querySelectorAll('th');
+        const header = headers[columnIndex];
+        
+        // Clear previous sort indicators
+        headers.forEach(h => {
+            h.classList.remove('sort-asc', 'sort-desc');
+        });
+        
+        // Determine sort direction
+        if (this.currentSort.column === columnIndex) {
+            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.currentSort.column = columnIndex;
+            this.currentSort.direction = 'asc';
+        }
+        
+        // Add sort indicator
+        header.classList.add(`sort-${this.currentSort.direction}`);
+        
+        // Sort the table
+        this.sortTable(columnIndex, this.currentSort.direction);
+    }
+    
+    sortTable(columnIndex, direction) {
+        const tbody = this.table.querySelector('tbody');
+        if (!tbody) return;
+        
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        
+        rows.sort((a, b) => {
+            const aCell = a.cells[columnIndex];
+            const bCell = b.cells[columnIndex];
+            
+            if (!aCell || !bCell) return 0;
+            
+            let aValue = aCell.textContent.trim();
+            let bValue = bCell.textContent.trim();
+            
+            // Handle special cases like badges and buttons
+            if (aCell.querySelector('.badge')) {
+                aValue = aCell.querySelector('.badge').textContent.trim();
+            }
+            if (bCell.querySelector('.badge')) {
+                bValue = bCell.querySelector('.badge').textContent.trim();
+            }
+            
+            // Try to convert to numbers for numeric sorting
+            const aNum = parseFloat(aValue);
+            const bNum = parseFloat(bValue);
+            
+            if (!isNaN(aNum) && !isNaN(bNum)) {
+                return direction === 'asc' ? aNum - bNum : bNum - aNum;
+            }
+            
+            // String sorting
+            if (direction === 'asc') {
+                return aValue.localeCompare(bValue);
+            } else {
+                return bValue.localeCompare(aValue);
+            }
+        });
+        
+        // Reorder rows
+        rows.forEach(row => tbody.appendChild(row));
+    }
+    
+    setData(data) {
+        this.data = data;
+        console.log('Query results table data set:', data.length, 'rows');
+    }
+    
+    refresh() {
+        console.log('Query results table refreshed');
+    }
+    
+    destroy() {
+        // Clean up event listeners
+        const headers = this.table.querySelectorAll('th');
+        headers.forEach(header => {
+            header.classList.remove('sortable', 'sort-asc', 'sort-desc');
+            header.style.cursor = '';
+        });
+        this.table.classList.remove('custom-table');
+    }
+}
+
 let currentResults = [];
 let currentQueryInfo = {};
 let currentStudyForCMove = null;
@@ -814,8 +929,21 @@ function displayResults(results, queryInfo) {
     // Add compact CSS styles
     addCompactStyles();
     
-    // Note: DataTable functionality removed for now due to tosijs issues
-    // Standard HTML table will be used instead
+    // Add sort indicator styles
+    addSortStyles();
+    
+    // Initialize the custom table after the HTML is rendered
+    const tableElement = document.querySelector('#resultsTable');
+    if (tableElement) {
+        if (window.queryResultsTable) {
+            window.queryResultsTable.destroy(); // Clean up previous instance
+        }
+        window.queryResultsTable = new CustomTable('#resultsTable');
+        window.queryResultsTable.setData(results);
+        console.log('Query results table initialized and data set successfully');
+    } else {
+        console.warn('Results table element not found, cannot initialize custom table.');
+    }
 }
 
 function displayError(error) {
@@ -1498,6 +1626,41 @@ function addCompactStyles() {
                 max-width: 80px !important;
                 width: 80px !important;
                 min-width: 60px !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// Sort indicator styling function
+function addSortStyles() {
+    if (!document.getElementById('sort-styles')) {
+        const style = document.createElement('style');
+        style.id = 'sort-styles';
+        style.textContent = `
+            /* Sort indicator styles */
+            #queryResults .table th.sortable {
+                position: relative;
+                cursor: pointer;
+                user-select: none;
+            }
+            #queryResults .table th.sortable:hover {
+                background-color: rgba(0, 123, 255, 0.1);
+            }
+            #queryResults .table th.sortable::after {
+                content: '↕';
+                position: absolute;
+                right: 8px;
+                color: #6c757d;
+                font-size: 0.8rem;
+            }
+            #queryResults .table th.sortable.sort-asc::after {
+                content: '↑';
+                color: #007bff;
+            }
+            #queryResults .table th.sortable.sort-desc::after {
+                content: '↓';
+                color: #007bff;
             }
         `;
         document.head.appendChild(style);
