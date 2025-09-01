@@ -11,9 +11,12 @@ Note: This tool works in test, but exercise caution with live/prod PACS and test
 
 ## Features
 
+- **Authentication & Authorization**: Local authentication, Active Directory, and SAML 2.0 support with role-based access control
+- **Environment-Specific Permissions**: Separate permissions for test and production PACS operations
+- **User Management**: Complete user administration interface with granular permission control
 - **HL7 ORM Integration**: Parse HL7 ORM messages and generate corresponding DICOM studies
 - **DICOM Generation**: Create synthetic DICOM files with realistic metadata
-- **PACS Integration**: Send studies to PACS servers, query studies on one or more PACS, and perform C-MOVE operations
+- **Multi-PACS Integration**: Send studies to PACS servers, query studies on one or more PACS, and perform C-MOVE operations
 - **Patient Management**: Comprehensive patient registry with synthetic data generation
 - **Web Interface**: Modern Flask-based web application with Bootstrap UI
 - **Docker Support**: Easy deployment with Docker Compose for example test PACS servers
@@ -140,6 +143,83 @@ The application will be available at `http://localhost:5001`
 
 ## Configuration
 
+### Authentication Setup
+
+DICOM Fabricator supports multiple authentication modes:
+
+#### Option 1: No Authentication (Default)
+The application runs without authentication for development and testing:
+
+```bash
+# No additional setup required
+python app.py
+```
+
+#### Option 2: Local Authentication
+Enable username/password authentication:
+
+1. **Create authentication configuration:**
+```bash
+cp config/auth_config.json.sample config/auth_config.json
+```
+
+2. **Edit `config/auth_config.json`:**
+```json
+{
+  "auth_enabled": true,
+  "enterprise_auth_enabled": false,
+  "default_user_permissions": [
+    "dicom_view",
+    "pacs_query_test"
+  ]
+}
+```
+
+3. **Create initial admin user:**
+```bash
+python3 -c "
+from src.auth import AuthManager
+auth = AuthManager()
+auth.create_user('admin', 'admin123', 'admin@example.com', 'admin')
+print('Admin user created: admin/admin123')
+"
+```
+
+#### Option 3: Enterprise Authentication (AD/SAML)
+For enterprise environments with Active Directory or SAML:
+
+1. **Enable enterprise authentication:**
+```json
+{
+  "auth_enabled": true,
+  "enterprise_auth_enabled": true,
+  "default_user_permissions": [
+    "dicom_view",
+    "pacs_query_test"
+  ]
+}
+```
+
+2. **Configure Active Directory:**
+```bash
+cp config/enterprise_auth.json.sample config/enterprise_auth.json
+# Edit with your AD server details
+```
+
+3. **Configure SAML:**
+```bash
+cp config/enterprise_auth.json.sample config/enterprise_auth.json
+# Edit with your SAML provider details
+```
+
+4. **Set up group mappings:**
+```bash
+cp config/group_mappings.json.sample config/group_mappings.json
+# Map AD/SAML groups to application roles
+```
+
+For detailed authentication setup, see [Authentication Setup Guide](docs/AUTHENTICATION_SETUP.md).
+
 ### PACS Configuration
 
 Copy the sample configuration and update with your PACS server details:
@@ -157,7 +237,8 @@ Edit `data/pacs_config.json` with your PACS server information:
     "host": "pacs.example.com",
     "port": 104,
     "aet": "DICOMFAB",
-    "aec": "PACS"
+    "aec": "PACS",
+    "environment": "test"
   }
 }
 ```

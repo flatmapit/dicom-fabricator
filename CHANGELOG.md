@@ -5,6 +5,45 @@ All notable changes to DICOM Fabricator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-09-01
+
+### Authentication & Authorization Release
+
+#### Authentication System
+- **Local Authentication**: Username/password authentication with configurable enable/disable
+- **Enterprise Integration**: Active Directory (AD) and SAML 2.0 support for enterprise environments
+- **Role-Based Access Control**: Granular permissions for test/production environments
+- **User Management Interface**: Complete user administration with create, edit, delete operations
+- **Session Management**: Secure session handling with configurable authentication modes
+- **Password Security**: SHA-256 password hashing with secure user management
+
+#### Environment-Specific Permissions
+- **Test Environment Access**: Separate permissions for test PACS operations
+- **Production Environment Access**: Separate permissions for production PACS operations
+- **Read/Write Permissions**: Granular control over query, move, configure, and test operations
+- **Admin Access**: System administrator role with full permissions
+- **Permission Categories**: System, DICOM, PACS (Test/Prod), and Patient Management permissions
+
+#### PACS Configuration Improvements
+- **Consistent Naming Scheme**: Standardized PACS names (Test PACS 1/2/3, Prod PACS 1/2)
+- **Footer Stats Accuracy**: Fixed footer to show actual successful PACS connections vs. total configs
+- **Multi-PACS Support**: Enhanced support for multiple test and production PACS servers
+- **Environment Filtering**: Test/Production environment filtering in PACS selection
+- **Color-Coded PACS**: Visual distinction between test (green) and production (purple) PACS
+
+#### User Interface Enhancements
+- **User Management Page**: Complete user administration interface with statistics
+- **Authentication Status**: User dropdown with role and permission display
+- **Login/Logout Flow**: Secure authentication flow with proper redirection
+- **Bootstrap Dropdown Fix**: Fixed dropdown functionality across all pages
+- **Security Headers**: Added X-Frame-Options, X-Content-Type-Options, and X-XSS-Protection headers
+
+#### Security Improvements
+- **Sensitive Data Protection**: Updated .gitignore to exclude user data and auth configs
+- **Session Security**: Secure session management with proper authentication checks
+- **Route Protection**: All main pages and API endpoints protected with authentication
+- **Enterprise Security**: Support for enterprise authentication systems (AD/SAML)
+
 ## [1.1.0] - 2025-09-01
 
 ### Feature Release
