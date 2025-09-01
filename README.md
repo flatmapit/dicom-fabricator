@@ -1,6 +1,6 @@
 # DICOM Fabricator
 
-A comprehensive DICOM study generation and management system built with Python and Flask. This tool allows you to create synthetic DICOM studies from HL7 ORM messages, manage patient data, and integrate with PACS servers.
+FICOM Fabricator (DF) is intended to be a tool for the use of PACS administrators and radiology clinical integrations developers and maintaines. DF is a DICOM study generation and PACS query system built with Python and Flask. DF allows you to query and C-MOVE across multiple PACS, create synthetic DICOM studies from user input or HL7 ORM messages for test purposes, and monitor PACS status with C-ECHO.
 
 ![Dashboard Screenshot](docs/images/dashboard.png)
 
@@ -11,10 +11,10 @@ A comprehensive DICOM study generation and management system built with Python a
 
 - **HL7 ORM Integration**: Parse HL7 ORM messages and generate corresponding DICOM studies
 - **DICOM Generation**: Create synthetic DICOM files with realistic metadata
-- **PACS Integration**: Send studies to PACS servers, query existing studies, and perform C-MOVE operations
+- **PACS Integration**: Send studies to PACS servers, query studies on one or more PACS, and perform C-MOVE operations
 - **Patient Management**: Comprehensive patient registry with synthetic data generation
 - **Web Interface**: Modern Flask-based web application with Bootstrap UI
-- **Docker Support**: Easy deployment with Docker Compose for PACS servers
+- **Docker Support**: Easy deployment with Docker Compose for example test PACS servers
 
 ## Architecture
 
@@ -27,7 +27,7 @@ A comprehensive DICOM study generation and management system built with Python a
 ## Prerequisites
 
 - Python 3.8+ (3.11 recommended)
-- pyenv (recommended for Python version management)
+- pyenv (optional, for Python version management)
 - DCMTK tools (findscu, storescu, movescu, echoscu, movescu)
 - Docker and Docker Compose (for PACS servers)
 
@@ -40,9 +40,11 @@ git clone https://github.com/flatmapit/dicom-fabricator.git
 cd dicom-fabricator
 ```
 
-### 2. Set Up Python Environment (Recommended)
+### 2. Set Up Python Environment
 
-#### Install pyenv (if not already installed)
+#### Option A: Using pyenv (Recommended for advanced users)
+
+**Install pyenv (if not already installed):**
 
 **macOS:**
 ```bash
@@ -60,8 +62,7 @@ curl https://pyenv.run | bash
 pip install pyenv-win
 ```
 
-#### Create and activate Python environment
-
+**Create and activate Python environment with pyenv:**
 ```bash
 # Install Python 3.11 (recommended version)
 pyenv install 3.11.0
@@ -78,6 +79,22 @@ source .venv/bin/activate
 # On Windows:
 .venv\Scripts\activate
 ```
+
+#### Option B: Using System Python (Quick setup)
+
+**Create and activate Python environment with system Python:**
+```bash
+# Create virtual environment with system Python
+python3 -m venv .venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source .venv/bin/activate
+# On Windows:
+.venv\Scripts\activate
+```
+
+**Note:** This option works if you have Python 3.8+ installed on your system. Check your version with `python3 --version`.
 
 ### 3. Install Dependencies
 
