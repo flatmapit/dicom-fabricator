@@ -40,35 +40,63 @@ pacs_manager = PacsConfigManager()
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# Global variables for activity tracking
+last_user_activity = time.time()
+user_activity_check_interval = 600  # 10 minutes
+active_testing_interval = 900  # 15 minutes when user is active
+inactive_testing_interval = 600  # 10 minutes when user is inactive
+
+def update_user_activity():
+    """Update the last user activity timestamp"""
+    global last_user_activity
+    last_user_activity = time.time()
+
+def is_user_active():
+    """Check if user has been active in the last 10 minutes"""
+    return (time.time() - last_user_activity) < user_activity_check_interval
+
 def auto_test_pacs_connections():
-    """Automatically test all PACS connections every 10 minutes"""
+    """Automatically test all PACS connections based on user activity"""
     while True:
         try:
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Auto-testing PACS connections...")
+            current_time = time.time()
+            time_since_activity = current_time - last_user_activity
             
-            # Get all active PACS configurations
-            configs = pacs_manager.list_configs(active_only=True)
+            # Determine if user is active
+            user_active = is_user_active()
             
-            for config in configs:
-                try:
-                    print(f"  Testing {config.name} ({config.aec}@{config.host}:{config.port})...")
-                    result = pacs_manager.test_connection(config.id)
-                    
-                    if result['success']:
-                        print(f"    ✓ {config.name}: Connection successful")
-                    else:
-                        print(f"    ✗ {config.name}: {result.get('error', 'Connection failed')}")
+            if user_active:
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] User active - Auto-testing PACS connections...")
+                next_interval = active_testing_interval
+            else:
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] User inactive ({time_since_activity/60:.1f} min) - Skipping PACS test")
+                next_interval = inactive_testing_interval
+            
+            # Only test if user is active
+            if user_active:
+                # Get all active PACS configurations
+                configs = pacs_manager.list_configs(active_only=True)
+                
+                for config in configs:
+                    try:
+                        print(f"  Testing {config.name} ({config.aec}@{config.host}:{config.port})...")
+                        result = pacs_manager.test_connection(config.id)
                         
-                except Exception as e:
-                    print(f"    ✗ {config.name}: Error during testing - {str(e)}")
-            
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Auto-testing completed")
+                        if result['success']:
+                            print(f"    ✓ {config.name}: Connection successful")
+                        else:
+                            print(f"    ✗ {config.name}: {result.get('error', 'Connection failed')}")
+                            
+                    except Exception as e:
+                        print(f"    ✗ {config.name}: Error during testing - {str(e)}")
+                
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Auto-testing completed")
             
         except Exception as e:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error in auto-testing: {str(e)}")
         
-        # Wait 10 minutes (600 seconds) before next test
-        time.sleep(600)
+        # Wait for next interval
+        time.sleep(next_interval)
 
 # Start automatic PACS testing in background thread
 pacs_testing_thread = threading.Thread(target=auto_test_pacs_connections, daemon=True)
@@ -76,23 +104,33 @@ pacs_testing_thread.start()
 
 @app.route('/')
 def index():
+    # Update user activity
+    update_user_activity()
     return render_template('query_pacs.html')
 
 @app.route('/patients')
 def patients_page():
+    # Update user activity
+    update_user_activity()
     return render_template('patients.html')
 
 @app.route('/generator')
 def generator_page():
+    # Update user activity
+    update_user_activity()
     return render_template('generator.html')
 
 
 @app.route('/pacs')
 def pacs_page():
+    # Update user activity
+    update_user_activity()
     return render_template('pacs.html')
 
 @app.route('/query-pacs')
 def query_pacs_page():
+    # Update user activity
+    update_user_activity()
     return render_template('query_pacs.html')
 
 @app.route('/api/patients', methods=['GET'])
@@ -1468,6 +1506,8 @@ def send_study_to_pacs():
 def list_pacs_configs():
     """List all PACS configurations"""
     try:
+        # Update user activity
+        update_user_activity()
         configs = pacs_manager.list_configs()
         return jsonify({
             'success': True,
@@ -1689,6 +1729,9 @@ def test_pacs_config(config_id):
 def get_pacs_stats():
     """Get PACS configuration statistics"""
     try:
+        # Update user activity
+        update_user_activity()
+        
         stats = pacs_manager.get_stats()
         return jsonify({
             'success': True,
@@ -1831,6 +1874,9 @@ def query_pacs():
     """Comprehensive PACS query with multiple search criteria"""
     import subprocess
     from datetime import datetime, timedelta
+    
+    # Update user activity
+    update_user_activity()
     
     data = request.json
     pacs_config_id = data.get('pacs_config_id')
