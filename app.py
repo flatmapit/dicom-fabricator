@@ -2372,9 +2372,22 @@ def c_move_study():
                 }
             })
         else:
+            # Provide more helpful error messages based on common C-MOVE issues
+            error_message = 'C-MOVE operation failed - check command output for details'
+            
+            # Check for specific error patterns
+            if 'UnableToProcess' in result.stderr:
+                error_message = 'C-MOVE failed: Source PACS cannot process the move request. This usually means the source PACS is not configured to send to the destination PACS.'
+            elif 'Association Request Failed' in result.stderr:
+                error_message = 'C-MOVE failed: Cannot connect to source PACS. Check if the PACS server is running and accessible.'
+            elif 'No Move Destination' in result.stderr:
+                error_message = 'C-MOVE failed: Destination PACS not found or not configured in source PACS routing table.'
+            elif 'Move SCP Failed' in result.stderr:
+                error_message = 'C-MOVE failed: Source PACS does not support C-MOVE operations or is not properly configured.'
+            
             return jsonify({
                 'success': False,
-                'error': 'C-MOVE operation failed - check command output for details',
+                'error': error_message,
                 'details': {
                     'stdout': result.stdout,
                     'stderr': result.stderr,
@@ -2385,7 +2398,8 @@ def c_move_study():
                     'output': result.stdout,
                     'stderr': result.stderr,
                     'exit_code': result.returncode
-                }
+                },
+                'suggestion': 'Consider using C-STORE to directly send the study to the destination PACS, or configure DICOM routing between the PACS servers.'
             }), 500
             
     except subprocess.TimeoutExpired:
