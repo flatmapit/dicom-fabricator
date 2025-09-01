@@ -433,30 +433,23 @@ function filterPacsByEnvironment() {
                         });
                     }
                 }, 100);
-            } else {
-                console.log('Tosijs not available, using standard select');
-                // Fallback: add standard change event listener if tosijs is not available
-                select.addEventListener('change', function() {
-                    updateSelectedPacsHint();
-                });
-            }
+            // Use standard select for now (tosijs is causing issues)
+            select.addEventListener('change', function() {
+                updateSelectedPacsHint();
+            });
             
             // Update hint for initial selection
             updateSelectedPacsHint();
             
-            // Add a more robust change detection for both tosijs and standard select
-            // Listen for both change events and attribute changes (for tosijs)
+            // Add a more robust change detection
             select.addEventListener('change', function() {
                 setTimeout(() => updateSelectedPacsHint(), 50);
             });
             
-            // Also listen for clicks on the select to catch tosijs interactions
+            // Also listen for clicks on the select
             select.addEventListener('click', function() {
                 setTimeout(() => updateSelectedPacsHint(), 100);
             });
-            
-        } else {
-            select.innerHTML = '<option value="">No PACS configurations available</option>';
         }
     } catch (error) {
         console.error('Error loading PACS configs:', error);
