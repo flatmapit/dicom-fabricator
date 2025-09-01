@@ -403,36 +403,6 @@ function filterPacsByEnvironment() {
         select.appendChild(option);
     });
             
-            // Initialize tosijs-ui for multi-select with search
-            console.log('Tosijs available:', !!window.tosijsui);
-            if (window.tosijsui) {
-                setTimeout(() => {
-                    try {
-                        // Destroy existing instance if it exists
-                        if (select.tosijsInstance) {
-                            select.tosijsInstance.destroy();
-                        }
-                        
-                        window.tosijsui.select('#queryPacsSelect', {
-                            search: {
-                                enabled: true,
-                                placeholder: 'Search PACS servers...'
-                            },
-                            multiple: true,
-                            placeholder: 'Select one or more PACS servers...',
-                            onChange: function(selectedValues) {
-                                updateSelectedPacsHint(selectedValues);
-                            }
-                        });
-                        console.log('Tosijs initialized successfully');
-                    } catch (error) {
-                        console.error('Error initializing tosijs:', error);
-                        // Fallback to standard select
-                        select.addEventListener('change', function() {
-                            updateSelectedPacsHint();
-                        });
-                    }
-                }, 100);
             // Use standard select for now (tosijs is causing issues)
             select.addEventListener('change', function() {
                 updateSelectedPacsHint();
