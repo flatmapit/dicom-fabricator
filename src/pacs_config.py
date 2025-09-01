@@ -135,7 +135,7 @@ class PacsConfigManager:
             print(f"Error saving PACS configs: {e}")
     
     def create_config(self, name: str, description: str, host: str, port: int,
-                     aet: str, aec: str, is_default: bool = False) -> PacsConfiguration:
+                     aet: str, aec: str, environment: str = "test", is_default: bool = False) -> PacsConfiguration:
         """Create a new PACS configuration"""
         # If this is set as default, unset other defaults
         if is_default:
@@ -149,6 +149,7 @@ class PacsConfigManager:
             port=port,
             aet=aet,
             aec=aec,
+            environment=environment,
             is_default=is_default
         )
         

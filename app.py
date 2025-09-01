@@ -1480,6 +1480,7 @@ def list_pacs_configs():
                     'port': config.port,
                     'aet': config.aet,
                     'aec': config.aec,
+                    'environment': config.environment,
                     'is_default': config.is_default,
                     'is_active': config.is_active,
                     'created_date': config.created_date,
@@ -1519,6 +1520,7 @@ def create_pacs_config():
             port=int(data['port']),
             aet=data['aet'],
             aec=data['aec'],
+            environment=data.get('environment', 'test'),
             is_default=data.get('is_default', False)
         )
         
@@ -1533,6 +1535,7 @@ def create_pacs_config():
                 'port': config.port,
                 'aet': config.aet,
                 'aec': config.aec,
+                'environment': config.environment,
                 'is_default': config.is_default,
                 'is_active': config.is_active,
                 'created_date': config.created_date,
@@ -1572,6 +1575,7 @@ def get_pacs_config(config_id):
                 'port': config.port,
                 'aet': config.aet,
                 'aec': config.aec,
+                'environment': config.environment,
                 'is_default': config.is_default,
                 'is_active': config.is_active,
                 'created_date': config.created_date,
@@ -1615,6 +1619,7 @@ def update_pacs_config(config_id):
                 'port': config.port,
                 'aet': config.aet,
                 'aec': config.aec,
+                'environment': config.environment,
                 'is_default': config.is_default,
                 'is_active': config.is_active,
                 'created_date': config.created_date,

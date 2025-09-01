@@ -240,6 +240,10 @@ let currentStudyForCMove = null;
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize environment filter first
+    initializeEnvironmentFilter();
+    
+    // Then load PACS configs
     loadPacsConfigs();
     
     // Initialize form submission
@@ -247,9 +251,6 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         queryPacs();
     });
-    
-    // Initialize environment filter
-    initializeEnvironmentFilter();
     
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -261,10 +262,16 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeEnvironmentFilter() {
     // Load saved environment preference
     const savedEnv = localStorage.getItem('pacs-environment-filter') || 'test';
-    document.querySelector(`input[name="envFilter"][value="${savedEnv}"]`).checked = true;
+    
+    const radioButton = document.querySelector(`input[name="envFilter"][value="${savedEnv}"]`);
+    if (radioButton) {
+        radioButton.checked = true;
+    }
     
     // Add event listeners for environment filter changes
-    document.querySelectorAll('input[name="envFilter"]').forEach(radio => {
+    const radioButtons = document.querySelectorAll('input[name="envFilter"]');
+    
+    radioButtons.forEach(radio => {
         radio.addEventListener('change', function() {
             localStorage.setItem('pacs-environment-filter', this.value);
             filterPacsByEnvironment();
@@ -274,17 +281,121 @@ function initializeEnvironmentFilter() {
 
 async function loadPacsConfigs() {
     try {
-        console.log('Loading PACS configs...');
         const response = await fetch('/api/pacs/configs');
-        console.log('Response status:', response.status);
         const data = await response.json();
-        console.log('PACS configs data:', data);
         
         // Store all configs globally for filtering
         window.allPacsConfigs = data.configs || [];
         
-        // Apply environment filter
-        filterPacsByEnvironment();
+        // Load PACS configs with environment filtering
+        const select = document.getElementById('queryPacsSelect');
+        select.innerHTML = '';
+        
+        if (window.allPacsConfigs && window.allPacsConfigs.length > 0) {
+            // Get selected environment
+            const selectedEnv = document.querySelector('input[name="envFilter"]:checked')?.value || 'test';
+            
+            // Filter configs by environment
+            const filteredConfigs = window.allPacsConfigs.filter(config => {
+                if (selectedEnv === 'both') return true;
+                return config.environment === selectedEnv;
+            });
+            
+            filteredConfigs.forEach((config, index) => {
+                const option = document.createElement('option');
+                option.value = config.id;
+                option.textContent = `${config.name} (${config.host}:${config.port})`;
+                option.dataset.pacsName = config.name;
+                option.dataset.pacsHost = config.host;
+                option.dataset.pacsPort = config.port;
+                option.dataset.environment = config.environment;
+                
+                // Apply color coding
+                if (config.environment === 'production') {
+                    option.style.color = '#6f42c1'; // Dark purple
+                    option.style.fontWeight = 'bold';
+                } else if (config.environment === 'test') {
+                    option.style.color = '#198754'; // Dark green
+                    option.style.fontWeight = 'bold';
+                }
+                
+                if (config.is_default) {
+                    option.selected = true;
+                }
+                
+                select.appendChild(option);
+            });
+            
+            // Initialize tosijs if available
+            if (window.tosijs) {
+                setTimeout(() => {
+                    try {
+                        window.tosijs('#queryPacsSelect', {
+                            search: { enabled: true, placeholder: 'Search PACS servers...' },
+                            multiple: true,
+                            placeholder: 'Select one or more PACS servers...',
+                            onChange: function(selectedValues) {
+                                updateSelectedPacsHint(selectedValues);
+                            }
+                        });
+                    } catch (error) {
+                        // Fallback to standard select
+                        select.addEventListener('change', function() {
+                            updateSelectedPacsHint();
+                        });
+                    }
+                }, 100);
+            } else {
+                // Fallback to standard select
+                select.addEventListener('change', function() {
+                    updateSelectedPacsHint();
+                });
+            }
+            
+        } else {
+            select.innerHTML = '<option value="">No PACS configurations available</option>';
+        }
+            console.error('Error in filterPacsByEnvironment:', error);
+            // Fallback: load all PACS configs without filtering
+            console.log('Using fallback: loading all PACS configs');
+            const select = document.getElementById('queryPacsSelect');
+            select.innerHTML = '';
+            
+            window.allPacsConfigs.forEach(config => {
+                const option = document.createElement('option');
+                option.value = config.id;
+                option.textContent = `${config.name} (${config.host}:${config.port})`;
+                option.dataset.pacsName = config.name;
+                option.dataset.pacsHost = config.host;
+                option.dataset.pacsPort = config.port;
+                option.dataset.environment = config.environment;
+                
+                if (config.is_default) {
+                    option.selected = true;
+                }
+                
+                select.appendChild(option);
+            });
+            
+            // Initialize tosijs after populating options
+            if (window.tosijs) {
+                setTimeout(() => {
+                    try {
+                        window.tosijs('#queryPacsSelect', {
+                            search: { enabled: true, placeholder: 'Search PACS servers...' },
+                            multiple: true,
+                            placeholder: 'Select one or more PACS servers...',
+                            onChange: function(selectedValues) {
+                                updateSelectedPacsHint(selectedValues);
+                            }
+                        });
+                        console.log('Tosijs initialized in fallback');
+                    } catch (error) {
+                        console.error('Error initializing tosijs in fallback:', error);
+                    }
+                }, 100);
+            }
+        }
         
     } catch (error) {
         console.error('Error loading PACS configs:', error);
@@ -295,7 +406,13 @@ async function loadPacsConfigs() {
 
 function filterPacsByEnvironment() {
     const select = document.getElementById('queryPacsSelect');
-    const selectedEnv = document.querySelector('input[name="envFilter"]:checked').value;
+    
+    const selectedRadio = document.querySelector('input[name="envFilter"]:checked');
+    if (!selectedRadio) {
+        return;
+    }
+    
+    const selectedEnv = selectedRadio.value;
     
     // Clear current options
     select.innerHTML = '';
@@ -349,26 +466,37 @@ function filterPacsByEnvironment() {
     });
             
             // Initialize tosijs-ui for multi-select with search
+            console.log('Tosijs available:', !!window.tosijs);
             if (window.tosijs) {
                 setTimeout(() => {
-                    // Destroy existing instance if it exists
-                    if (select.tosijsInstance) {
-                        select.tosijsInstance.destroy();
-                    }
-                    
-                    window.tosijs('#queryPacsSelect', {
-                        search: {
-                            enabled: true,
-                            placeholder: 'Search PACS servers...'
-                        },
-                        multiple: true,
-                        placeholder: 'Select one or more PACS servers...',
-                        onChange: function(selectedValues) {
-                            updateSelectedPacsHint(selectedValues);
+                    try {
+                        // Destroy existing instance if it exists
+                        if (select.tosijsInstance) {
+                            select.tosijsInstance.destroy();
                         }
-                    });
+                        
+                        window.tosijs('#queryPacsSelect', {
+                            search: {
+                                enabled: true,
+                                placeholder: 'Search PACS servers...'
+                            },
+                            multiple: true,
+                            placeholder: 'Select one or more PACS servers...',
+                            onChange: function(selectedValues) {
+                                updateSelectedPacsHint(selectedValues);
+                            }
+                        });
+                        console.log('Tosijs initialized successfully');
+                    } catch (error) {
+                        console.error('Error initializing tosijs:', error);
+                        // Fallback to standard select
+                        select.addEventListener('change', function() {
+                            updateSelectedPacsHint();
+                        });
+                    }
                 }, 100);
             } else {
+                console.log('Tosijs not available, using standard select');
                 // Fallback: add standard change event listener if tosijs is not available
                 select.addEventListener('change', function() {
                     updateSelectedPacsHint();
