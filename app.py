@@ -4,7 +4,7 @@ DICOM Fabricator Flask Web Application
 Copyright (c) 2025 Christopher Gentle <chris@flatmapit.com>
 """
 
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, make_response
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, make_response, session, redirect, url_for, flash
 from flask_cors import CORS
 import os
 import sys
@@ -22,12 +22,20 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from dicom_fabricator import DICOMFabricator
 from patient_config import PatientRegistry, PatientRecord
 from pacs_config import PacsConfigManager
+from auth import auth_manager, login_required, permission_required, any_permission_required, get_current_user, login_user, logout_user, is_authenticated
+from enterprise_auth import get_enterprise_auth_manager
+from group_mapper import get_group_mapper
 import pydicom
 from PIL import Image
 import numpy as np
 
 app = Flask(__name__)
 CORS(app)
+
+# Session configuration
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
 
 UPLOAD_FOLDER = 'dicom_output'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -36,6 +44,10 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 patient_registry = PatientRegistry()
 fabricator = DICOMFabricator(patient_registry)
 pacs_manager = PacsConfigManager()
+
+# Initialize authentication managers
+enterprise_auth_manager = get_enterprise_auth_manager()
+group_mapper = get_group_mapper()
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -106,32 +118,172 @@ pacs_testing_thread.start()
 def index():
     # Update user activity
     update_user_activity()
-    return render_template('query_pacs.html')
+    return render_template('query_pacs.html', 
+                         auth_enabled=auth_manager.is_auth_enabled(),
+                         current_user=get_current_user())
 
 @app.route('/patients')
 def patients_page():
     # Update user activity
     update_user_activity()
-    return render_template('patients.html')
+    return render_template('patients.html',
+                         auth_enabled=auth_manager.is_auth_enabled(),
+                         current_user=get_current_user())
 
 @app.route('/generator')
 def generator_page():
     # Update user activity
     update_user_activity()
-    return render_template('generator.html')
+    return render_template('generator.html',
+                         auth_enabled=auth_manager.is_auth_enabled(),
+                         current_user=get_current_user())
 
 
 @app.route('/pacs')
 def pacs_page():
     # Update user activity
     update_user_activity()
-    return render_template('pacs.html')
+    return render_template('pacs.html',
+                         auth_enabled=auth_manager.is_auth_enabled(),
+                         current_user=get_current_user())
 
 @app.route('/query-pacs')
 def query_pacs_page():
     # Update user activity
     update_user_activity()
-    return render_template('query_pacs.html')
+    return render_template('query_pacs.html',
+                         auth_enabled=auth_manager.is_auth_enabled(),
+                         current_user=get_current_user())
+
+# Authentication routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page and authentication"""
+    if request.method == 'GET':
+        return render_template('login.html',
+                             auth_enabled=auth_manager.is_auth_enabled(),
+                             enterprise_auth_enabled=auth_manager.is_enterprise_auth_enabled(),
+                             saml_enabled=enterprise_auth_manager.is_method_enabled('saml'),
+                             ad_enabled=enterprise_auth_manager.is_method_enabled('ad'))
+    
+    # Handle login form submission
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    if not username or not password:
+        flash('Username and password are required', 'error')
+        return render_template('login.html')
+    
+    # Try local authentication first
+    user = auth_manager.authenticate(username, password)
+    
+    if user:
+        login_user(user)
+        flash(f'Welcome, {user.username}!', 'success')
+        return redirect(url_for('index'))
+    
+    # Try enterprise authentication if enabled
+    if enterprise_auth_manager.is_method_enabled('ad'):
+        ad_user = enterprise_auth_manager.authenticate_ad(username, password)
+        if ad_user:
+            # Map AD groups to permissions
+            group_mapping = group_mapper.map_groups_to_permissions(ad_user['groups'])
+            
+            # Create or update local user record
+            user = User(
+                username=ad_user['username'],
+                password_hash='',  # No local password for AD users
+                email=ad_user['email'],
+                role=group_mapping['role'],
+                permissions=group_mapping['permissions']
+            )
+            
+            # Save user to local storage
+            auth_manager.users[user.username] = user
+            auth_manager.save_users()
+            
+            login_user(user)
+            flash(f'Welcome, {ad_user["display_name"]}! (AD)', 'success')
+            return redirect(url_for('index'))
+    
+    flash('Invalid username or password', 'error')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    """Logout user"""
+    logout_user()
+    flash('You have been logged out', 'info')
+    return redirect(url_for('login'))
+
+@app.route('/saml/login')
+def saml_login():
+    """Initiate SAML login"""
+    if not enterprise_auth_manager.is_method_enabled('saml'):
+        flash('SAML authentication is not enabled', 'error')
+        return redirect(url_for('login'))
+    
+    try:
+        login_url = enterprise_auth_manager.initiate_saml_login()
+        return redirect(login_url)
+    except Exception as e:
+        flash(f'SAML login error: {str(e)}', 'error')
+        return redirect(url_for('login'))
+
+@app.route('/saml/acs', methods=['POST'])
+def saml_acs():
+    """SAML Assertion Consumer Service"""
+    if not enterprise_auth_manager.is_method_enabled('saml'):
+        flash('SAML authentication is not enabled', 'error')
+        return redirect(url_for('login'))
+    
+    try:
+        saml_response = request.form.get('SAMLResponse')
+        if not saml_response:
+            flash('No SAML response received', 'error')
+            return redirect(url_for('login'))
+        
+        # Process SAML response
+        saml_user = enterprise_auth_manager.process_saml_response(saml_response)
+        if saml_user:
+            # Map SAML groups to permissions
+            group_mapping = group_mapper.map_groups_to_permissions(saml_user['groups'])
+            
+            # Create or update local user record
+            user = User(
+                username=saml_user['username'],
+                password_hash='',  # No local password for SAML users
+                email=saml_user['email'],
+                role=group_mapping['role'],
+                permissions=group_mapping['permissions']
+            )
+            
+            # Save user to local storage
+            auth_manager.users[user.username] = user
+            auth_manager.save_users()
+            
+            login_user(user)
+            flash(f'Welcome, {saml_user["display_name"]}! (SAML)', 'success')
+            return redirect(url_for('index'))
+        
+        flash('SAML authentication failed', 'error')
+        return redirect(url_for('login'))
+        
+    except Exception as e:
+        flash(f'SAML processing error: {str(e)}', 'error')
+        return redirect(url_for('login'))
+
+@app.route('/auth/status')
+def auth_status():
+    """Get authentication status"""
+    return jsonify({
+        'authenticated': is_authenticated(),
+        'auth_enabled': auth_manager.is_auth_enabled(),
+        'enterprise_auth_enabled': auth_manager.is_enterprise_auth_enabled(),
+        'current_user': get_current_user().username if get_current_user() else None,
+        'user_role': get_current_user().role if get_current_user() else None,
+        'user_permissions': get_current_user().permissions if get_current_user() else []
+    })
 
 @app.route('/api/patients', methods=['GET'])
 def get_patients():

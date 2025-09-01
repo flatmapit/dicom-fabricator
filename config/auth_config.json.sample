@@ -1,0 +1,8 @@
+{
+  "auth_enabled": true,
+  "enterprise_auth_enabled": false,
+  "default_user_permissions": [
+    "dicom_view",
+    "pacs_query"
+  ]
+}

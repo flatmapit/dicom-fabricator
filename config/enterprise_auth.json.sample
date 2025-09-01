@@ -1,0 +1,42 @@
+{
+  "active_directory": {
+    "enabled": false,
+    "server": "dc.company.com",
+    "port": 389,
+    "use_ssl": false,
+    "use_ntlm": true,
+    "bind_dn": "CN=ServiceAccount,OU=ServiceAccounts,DC=company,DC=com",
+    "bind_password": "your-service-account-password",
+    "search_base": "DC=company,DC=com",
+    "search_filter": "(sAMAccountName={username})",
+    "user_attributes": [
+      "sAMAccountName",
+      "mail",
+      "displayName",
+      "memberOf"
+    ],
+    "group_attributes": [
+      "cn",
+      "description"
+    ]
+  },
+  "saml": {
+    "enabled": false,
+    "idp_entity_id": "https://sts.windows.net/your-tenant-id/",
+    "idp_sso_url": "https://login.microsoftonline.com/your-tenant-id/saml2",
+    "idp_slo_url": "https://login.microsoftonline.com/your-tenant-id/saml2",
+    "idp_x509_cert": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+    "sp_entity_id": "https://your-app.company.com",
+    "sp_acs_url": "https://your-app.company.com/saml/acs",
+    "sp_slo_url": "https://your-app.company.com/saml/slo",
+    "sp_x509_cert": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+    "sp_private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----",
+    "name_id_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified",
+    "attribute_mapping": {
+      "username": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+      "email": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+      "display_name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+      "groups": "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"
+    }
+  }
+}

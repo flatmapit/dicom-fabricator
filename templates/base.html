@@ -55,7 +55,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'index' or request.endpoint == 'query_pacs_page' %}active{% endif %}" href="/">
                             <i class="fas fa-search"></i> Query PACS
@@ -76,6 +76,46 @@
                             <i class="fas fa-users"></i> Patients
                         </a>
                     </li>
+                </ul>
+                
+                <!-- Authentication Status -->
+                <ul class="navbar-nav ms-auto">
+                    {% if auth_enabled %}
+                        {% if current_user %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-user-circle"></i> {{ current_user.username }}
+                                    {% if current_user.role != 'user' %}
+                                        <span class="badge bg-secondary">{{ current_user.role }}</span>
+                                    {% endif %}
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                    <li><h6 class="dropdown-header">User Information</h6></li>
+                                    <li><span class="dropdown-item-text"><i class="fas fa-envelope"></i> {{ current_user.email }}</span></li>
+                                    <li><span class="dropdown-item-text"><i class="fas fa-user-tag"></i> Role: {{ current_user.role }}</span></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">Permissions</h6></li>
+                                    {% for permission in current_user.permissions %}
+                                        <li><span class="dropdown-item-text small"><i class="fas fa-check text-success"></i> {{ permission }}</span></li>
+                                    {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                                </ul>
+                            </li>
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('login') }}">
+                                    <i class="fas fa-sign-in-alt"></i> Login
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="nav-item">
+                            <span class="nav-link text-light">
+                                <i class="fas fa-user-secret"></i> No Auth Mode
+                            </span>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

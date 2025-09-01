@@ -1,0 +1,101 @@
+{
+  "default_role": "user",
+  "default_permissions": [
+    "dicom_view",
+    "pacs_query"
+  ],
+  "mappings": {
+    "DICOM_Administrators": {
+      "enterprise_group": "DICOM_Administrators",
+      "application_role": "admin",
+      "permissions": [
+        "system_admin"
+      ],
+      "is_active": true,
+      "description": "Full system administration access"
+    },
+    "DICOM_Operators": {
+      "enterprise_group": "DICOM_Operators",
+      "application_role": "operator",
+      "permissions": [
+        "dicom_generate",
+        "dicom_view",
+        "dicom_export",
+        "pacs_query",
+        "pacs_move",
+        "pacs_configure",
+        "pacs_test",
+        "patients_view",
+        "patients_create",
+        "patients_edit"
+      ],
+      "is_active": true,
+      "description": "Full operational access to DICOM features"
+    },
+    "DICOM_Viewers": {
+      "enterprise_group": "DICOM_Viewers",
+      "application_role": "viewer",
+      "permissions": [
+        "dicom_view",
+        "pacs_query",
+        "patients_view"
+      ],
+      "is_active": true,
+      "description": "Read-only access to DICOM data"
+    },
+    "PACS_Administrators": {
+      "enterprise_group": "PACS_Administrators",
+      "application_role": "pacs_admin",
+      "permissions": [
+        "pacs_query",
+        "pacs_move",
+        "pacs_configure",
+        "pacs_test",
+        "system_config"
+      ],
+      "is_active": true,
+      "description": "PACS management and configuration access"
+    },
+    "Patient_Managers": {
+      "enterprise_group": "Patient_Managers",
+      "application_role": "patient_manager",
+      "permissions": [
+        "patients_view",
+        "patients_create",
+        "patients_edit",
+        "patients_delete",
+        "dicom_view"
+      ],
+      "is_active": true,
+      "description": "Patient registry management access"
+    },
+    "Radiologists": {
+      "enterprise_group": "Radiologists",
+      "application_role": "operator",
+      "permissions": [
+        "dicom_generate",
+        "dicom_view",
+        "dicom_export",
+        "pacs_query",
+        "pacs_move",
+        "patients_view",
+        "patients_create"
+      ],
+      "is_active": true,
+      "description": "Radiologist access with DICOM generation and PACS query capabilities"
+    },
+    "IT_Support": {
+      "enterprise_group": "IT_Support",
+      "application_role": "pacs_admin",
+      "permissions": [
+        "pacs_query",
+        "pacs_configure",
+        "pacs_test",
+        "system_config",
+        "dicom_view"
+      ],
+      "is_active": true,
+      "description": "IT support access for PACS configuration and troubleshooting"
+    }
+  }
+}
