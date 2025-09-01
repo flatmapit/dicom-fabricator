@@ -1869,6 +1869,162 @@ def query_series_details():
             'error': f'Error querying series: {str(e)}'
         }), 500
 
+def query_pacs_via_rest(pacs_config, query_params):
+    """Query PACS server using REST API (fallback when C-FIND fails)"""
+    import requests
+    from datetime import datetime, timedelta
+    
+    # Orthanc credentials mapping
+    orthanc_credentials = {
+        'localhost:4242': ('test', 'test123'),
+        'localhost:4243': ('test2', 'test456'),
+        'localhost:4244': ('test', 'test123'),
+        'localhost:4245': ('orthanc', 'orthanc')
+    }
+    
+    source_key = f"{pacs_config.host}:{pacs_config.port}"
+    
+    if source_key not in orthanc_credentials:
+        return {
+            'success': False,
+            'error': f'No REST API credentials available for {pacs_config.name}',
+            'results': []
+        }
+    
+    username, password = orthanc_credentials[source_key]
+    web_port_mapping = {
+        4242: 8042,  # orthanc-test-pacs
+        4243: 8043,  # orthanc-test-pacs-2
+        4244: 8044,  # testpacs-test
+        4245: 8045   # testpacs-prod
+    }
+    web_port = web_port_mapping.get(pacs_config.port, pacs_config.port + 8000)
+    
+    try:
+        # Get all studies from Orthanc
+        response = requests.get(
+            f'http://localhost:{web_port}/studies',
+            auth=(username, password),
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            return {
+                'success': False,
+                'error': f'REST API request failed: HTTP {response.status_code}',
+                'results': []
+            }
+        
+        study_ids = response.json()
+        studies = []
+        
+        # Process each study
+        for study_id in study_ids[:query_params.get('max_results', 100)]:
+            try:
+                # Get study details
+                study_response = requests.get(
+                    f'http://localhost:{web_port}/studies/{study_id}',
+                    auth=(username, password),
+                    timeout=10
+                )
+                
+                if study_response.status_code == 200:
+                    study_data = study_response.json()
+                    main_tags = study_data.get('MainDicomTags', {})
+                    
+                    # Apply search filters
+                    if not matches_search_criteria(main_tags, query_params):
+                        continue
+                    
+                    # Format study result
+                    study_result = {
+                        'study_uid': main_tags.get('StudyInstanceUID', ''),
+                        'patient_name': main_tags.get('PatientName', ''),
+                        'patient_id': main_tags.get('PatientID', ''),
+                        'study_date': main_tags.get('StudyDate', ''),
+                        'study_time': main_tags.get('StudyTime', ''),
+                        'accession_number': main_tags.get('AccessionNumber', ''),
+                        'study_description': main_tags.get('StudyDescription', ''),
+                        'modality': main_tags.get('Modality', ''),
+                        'series_count': main_tags.get('NumberOfStudyRelatedSeries', ''),
+                        'instance_count': main_tags.get('NumberOfStudyRelatedInstances', ''),
+                        'series_uid': main_tags.get('SeriesInstanceUID', ''),
+                        'series_number': main_tags.get('SeriesNumber', ''),
+                        'series_description': main_tags.get('SeriesDescription', '')
+                    }
+                    
+                    studies.append(study_result)
+                    
+            except Exception as e:
+                print(f"DEBUG: Error processing study {study_id}: {str(e)}")
+                continue
+        
+        return {
+            'success': True,
+            'results': studies,
+            'error': None
+        }
+        
+    except requests.exceptions.RequestException as e:
+        return {
+            'success': False,
+            'error': f'REST API request failed: {str(e)}',
+            'results': []
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Unexpected error in REST API query: {str(e)}',
+            'results': []
+        }
+
+def matches_search_criteria(main_tags, query_params):
+    """Check if study matches search criteria"""
+    import re
+    
+    # Patient Name filter
+    patient_name = query_params.get('patient_name', '').strip()
+    if patient_name and patient_name != '*':
+        study_patient_name = main_tags.get('PatientName', '')
+        if not re.search(patient_name.replace('*', '.*'), study_patient_name, re.IGNORECASE):
+            return False
+    
+    # Patient ID filter
+    patient_id = query_params.get('patient_id', '').strip()
+    if patient_id and patient_id != '*':
+        study_patient_id = main_tags.get('PatientID', '')
+        if not re.search(patient_id.replace('*', '.*'), study_patient_id, re.IGNORECASE):
+            return False
+    
+    # Accession Number filter
+    accession = query_params.get('accession_number', '').strip()
+    if accession and accession != '*':
+        study_accession = main_tags.get('AccessionNumber', '')
+        if not re.search(accession.replace('*', '.*'), study_accession, re.IGNORECASE):
+            return False
+    
+    # Study UID filter
+    study_uid = query_params.get('study_uid', '').strip()
+    if study_uid:
+        study_study_uid = main_tags.get('StudyInstanceUID', '')
+        if study_uid != study_study_uid:
+            return False
+    
+    # Date range filter
+    days_ago = query_params.get('days_ago', 0)
+    if days_ago and days_ago > 0:
+        study_date = main_tags.get('StudyDate', '')
+        if study_date:
+            try:
+                study_datetime = datetime.strptime(study_date, '%Y%m%d')
+                cutoff_date = datetime.now() - timedelta(days=days_ago)
+                if study_datetime < cutoff_date:
+                    return False
+            except ValueError:
+                pass  # Skip date filtering if date format is invalid
+    
+    return True
+
 @app.route('/api/pacs/query', methods=['POST'])
 def query_pacs():
     """Comprehensive PACS query with multiple search criteria"""
@@ -2039,6 +2195,40 @@ def query_pacs():
                 print(f"DEBUG: PACS returned {len(studies)} results, limiting to {max_results}")
                 studies = studies[:max_results]
             
+            # If no results from C-FIND, try REST API fallback for Orthanc PACS
+            if len(studies) == 0 and pacs_config.port in [4242, 4243, 4244, 4245]:
+                print(f"DEBUG: No C-FIND results, attempting REST API fallback for {pacs_config.name}")
+                rest_results = query_pacs_via_rest(pacs_config, data)
+                
+                if rest_results['success'] and len(rest_results['results']) > 0:
+                    print(f"DEBUG: REST API fallback successful, returned {len(rest_results['results'])} studies")
+                    return jsonify({
+                        'success': True,
+                        'results': rest_results['results'],
+                        'query_info': {
+                            'pacs_name': pacs_config.name,
+                            'query_level': query_level,
+                            'total_results': len(rest_results['results']),
+                            'max_results_requested': max_results,
+                            'search_criteria': {
+                                'patient_name': data.get('patient_name', ''),
+                                'patient_id': data.get('patient_id', ''),
+                                'accession_number': data.get('accession_number', ''),
+                                'study_uid': data.get('study_uid', ''),
+                                'series_uid': data.get('series_uid', ''),
+                                'days_ago': days_ago
+                            },
+                            'method': 'REST API (C-FIND fallback)'
+                        },
+                        'command_output': {
+                            'command': cmd_string,
+                            'output': result.stdout,
+                            'stderr': result.stderr,
+                            'exit_code': result.returncode,
+                            'fallback_used': True
+                        }
+                    })
+            
             return jsonify({
                 'success': True,
                 'results': studies,
@@ -2064,9 +2254,42 @@ def query_pacs():
                 }
             })
         else:
-            return jsonify({
-                'success': False,
-                'error': 'PACS query failed',
+            # Try REST API fallback for Orthanc PACS servers
+            print(f"DEBUG: C-FIND failed, attempting REST API fallback for {pacs_config.name}")
+            rest_results = query_pacs_via_rest(pacs_config, query_params)
+            
+            if rest_results['success']:
+                print(f"DEBUG: REST API fallback successful, returned {len(rest_results['results'])} studies")
+                return jsonify({
+                    'success': True,
+                    'results': rest_results['results'],
+                    'query_info': {
+                        'pacs_name': pacs_config.name,
+                        'query_level': query_level,
+                        'total_results': len(rest_results['results']),
+                        'max_results_requested': max_results,
+                        'search_criteria': {
+                            'patient_name': data.get('patient_name', ''),
+                            'patient_id': data.get('patient_id', ''),
+                            'accession_number': data.get('accession_number', ''),
+                            'study_uid': data.get('study_uid', ''),
+                            'series_uid': data.get('series_uid', ''),
+                            'days_ago': days_ago
+                        },
+                        'method': 'REST API (C-FIND fallback)'
+                    },
+                    'command_output': {
+                        'command': cmd_string,
+                        'output': result.stdout,
+                        'stderr': result.stderr,
+                        'exit_code': result.returncode,
+                        'fallback_used': True
+                    }
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'PACS query failed',
                 'details': {
                     'stdout': result.stdout,
                     'stderr': result.stderr,
