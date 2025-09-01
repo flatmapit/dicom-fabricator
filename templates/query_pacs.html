@@ -178,13 +178,29 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="mb-3">Select the destination PACS server to move this study to:</p>
+                <p class="mb-3">Select one or more destination PACS servers to move this study to:</p>
                 
+                <!-- Environment Filter -->
                 <div class="mb-3">
-                    <label for="destinationPacsSelect" class="form-label">Destination PACS Server</label>
-                    <select id="destinationPacsSelect" class="form-select">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label for="cMovePacsSelect" class="form-label small mb-0">Select Destination PACS</label>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Environment filter">
+                            <input type="radio" class="btn-check" name="cMoveEnvFilter" id="cMoveEnvTest" value="test" checked>
+                            <label class="btn btn-outline-success btn-sm" for="cMoveEnvTest">Test</label>
+                            
+                            <input type="radio" class="btn-check" name="cMoveEnvFilter" id="cMoveEnvProd" value="production">
+                            <label class="btn btn-outline-primary btn-sm" for="cMoveEnvProd">Prod</label>
+                            
+                            <input type="radio" class="btn-check" name="cMoveEnvFilter" id="cMoveEnvBoth" value="both">
+                            <label class="btn btn-outline-secondary btn-sm" for="cMoveEnvBoth">Both</label>
+                        </div>
+                    </div>
+                    <select id="cMovePacsSelect" class="form-select form-select-sm" multiple>
                         <option value="">Loading...</option>
                     </select>
+                    <div id="cMoveSelectedPacsHint" class="form-text mt-1" style="display: none; font-size: 0.75rem;">
+                        <i class="fas fa-info-circle"></i> <span id="cMoveSelectedPacsText"></span>
+                    </div>
                 </div>
                 
                 <div class="alert alert-info mb-3">
@@ -198,11 +214,12 @@
                     <i class="fas fa-exclamation-triangle"></i>
                     <strong>Note:</strong> C-MOVE will retrieve the study from the source PACS and store it on the destination PACS. 
                     This operation may take time depending on the study size and network conditions.
+                    <br><small>If multiple PACS are selected, C-MOVE operations will be performed sequentially.</small>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="executeCMove()">
+                <button type="button" class="btn btn-primary" id="cMoveExecuteBtn" onclick="executeCMove()" disabled>
                     <i class="fas fa-exchange-alt"></i> C-MOVE
                 </button>
             </div>
@@ -1090,12 +1107,19 @@ function showCMoveDialog() {
         return;
     }
     
+    // Initialize C-MOVE environment filter
+    initializeCMoveEnvironmentFilter();
+    
     // Load available PACS configs (excluding the source PACS)
     loadDestinationPacsConfigs();
     
-    // Update study info display
+    // Update study info display with abbreviated UID
+    const abbreviatedUid = currentStudyForCMove.study_uid ? 
+        currentStudyForCMove.study_uid.substring(0, 30) + '...' : 'Unknown';
+    
     const studyInfo = `${currentStudyForCMove.patient_name} - ${currentStudyForCMove.study_description || 'No description'}<br>
-                      Study UID: ${currentStudyForCMove.study_uid}<br>
+                      Study UID: ${abbreviatedUid} 
+                      ${currentStudyForCMove.study_uid ? `<button class="btn btn-sm btn-outline-secondary ms-1" onclick="copyToClipboard('${currentStudyForCMove.study_uid}', 'Study UID', event)" title="Copy full Study UID"><i class="fas fa-copy"></i></button>` : ''}<br>
                       Date: ${currentStudyForCMove.study_date_formatted || currentStudyForCMove.study_date}`;
     document.getElementById('cMoveStudyInfo').innerHTML = studyInfo;
     
@@ -1119,48 +1143,172 @@ async function loadDestinationPacsConfigs() {
         const response = await fetch('/api/pacs/configs');
         const data = await response.json();
         
-        const select = document.getElementById('destinationPacsSelect');
-        select.innerHTML = '';
+        // Store all configs globally for C-MOVE filtering
+        window.cMovePacsConfigs = data.configs || [];
         
-        if (data.success && data.configs.length > 0) {
-            // Add default option
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.textContent = 'Select destination PACS...';
-            select.appendChild(defaultOption);
-            
-            // Get current source PACS ID to exclude it
-            const sourcePacsId = document.getElementById('queryPacsSelect').value;
-            
-            data.configs.forEach(config => {
-                // Exclude the source PACS from destination options
-                if (config.id !== sourcePacsId) {
-                    const option = document.createElement('option');
-                    option.value = config.id;
-                    option.textContent = `${config.name} (${config.host}:${config.port})`;
-                    select.appendChild(option);
-                }
-            });
-            
-            if (select.children.length === 1) {
-                // Only the default option exists (no other PACS available)
-                select.innerHTML = '<option value="">No other PACS servers available</option>';
-            }
-        } else {
-            select.innerHTML = '<option value="">No PACS configurations available</option>';
-        }
+        // Apply environment filtering for C-MOVE
+        filterCMovePacsByEnvironment();
+        
     } catch (error) {
         console.error('Error loading destination PACS configs:', error);
-        document.getElementById('destinationPacsSelect').innerHTML = '<option value="">Error loading PACS configs</option>';
+        document.getElementById('cMovePacsSelect').innerHTML = '<option value="">Error loading PACS configs</option>';
+    }
+}
+
+function initializeCMoveEnvironmentFilter() {
+    // Load saved environment preference for C-MOVE
+    const savedEnv = localStorage.getItem('cMove-pacs-environment-filter') || 'test';
+    
+    const radioButton = document.querySelector(`input[name="cMoveEnvFilter"][value="${savedEnv}"]`);
+    if (radioButton) {
+        radioButton.checked = true;
+    }
+    
+    // Add event listeners for environment filter changes
+    const radioButtons = document.querySelectorAll('input[name="cMoveEnvFilter"]');
+    
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', function() {
+            localStorage.setItem('cMove-pacs-environment-filter', this.value);
+            filterCMovePacsByEnvironment();
+        });
+    });
+}
+
+function filterCMovePacsByEnvironment() {
+    const select = document.getElementById('cMovePacsSelect');
+    
+    const selectedRadio = document.querySelector('input[name="cMoveEnvFilter"]:checked');
+    if (!selectedRadio) {
+        return;
+    }
+    
+    const selectedEnv = selectedRadio.value;
+    
+    // Clear current options
+    select.innerHTML = '';
+    
+    if (!window.cMovePacsConfigs || window.cMovePacsConfigs.length === 0) {
+        select.innerHTML = '<option value="">No PACS configurations available</option>';
+        return;
+    }
+    
+    // Get current source PACS ID to exclude it
+    const sourcePacsId = document.getElementById('queryPacsSelect').value;
+    
+    // Filter configs by environment and exclude source PACS
+    const filteredConfigs = window.cMovePacsConfigs.filter(config => {
+        if (config.id === sourcePacsId) return false; // Exclude source PACS
+        if (selectedEnv === 'both') return true;
+        return config.environment === selectedEnv;
+    });
+    
+    if (filteredConfigs.length === 0) {
+        select.innerHTML = `<option value="">No ${selectedEnv} PACS configurations available (excluding source)</option>`;
+        return;
+    }
+    
+    filteredConfigs.forEach(config => {
+        const option = document.createElement('option');
+        option.value = config.id;
+        option.textContent = `${config.name} (${config.host}:${config.port})`;
+        option.dataset.pacsName = config.name;
+        option.dataset.pacsHost = config.host;
+        option.dataset.pacsPort = config.port;
+        option.dataset.environment = config.environment;
+        
+        // Apply color coding based on environment
+        if (config.environment === 'production') {
+            option.style.color = '#6f42c1'; // Dark purple
+            option.style.fontWeight = 'bold';
+        } else if (config.environment === 'test') {
+            option.style.color = '#198754'; // Dark green
+            option.style.fontWeight = 'bold';
+        }
+        
+        select.appendChild(option);
+    });
+    
+    // Setup event listeners for the C-MOVE select
+    setupCMovePacsSelectEventListeners(select);
+    
+    // Update hint for initial selection
+    updateCMoveSelectedPacsHint();
+}
+
+function setupCMovePacsSelectEventListeners(select) {
+    // Remove existing listeners to avoid duplicates
+    select.removeEventListener('change', handleCMovePacsSelectChange);
+    select.removeEventListener('click', handleCMovePacsSelectClick);
+    
+    // Add new listeners
+    select.addEventListener('change', handleCMovePacsSelectChange);
+    select.addEventListener('click', handleCMovePacsSelectClick);
+}
+
+function handleCMovePacsSelectChange() {
+    updateCMoveSelectedPacsHint();
+    updateCMoveButtonState();
+}
+
+function handleCMovePacsSelectClick() {
+    setTimeout(() => {
+        updateCMoveSelectedPacsHint();
+        updateCMoveButtonState();
+    }, 100);
+}
+
+function updateCMoveSelectedPacsHint() {
+    const hint = document.getElementById('cMoveSelectedPacsHint');
+    const hintText = document.getElementById('cMoveSelectedPacsText');
+    const select = document.getElementById('cMovePacsSelect');
+    
+    const selectedValues = Array.from(select.selectedOptions).map(option => option.value);
+    
+    // Filter out empty values
+    const validSelectedValues = selectedValues.filter(value => value && value !== '');
+    
+    if (validSelectedValues.length === 0) {
+        hint.style.display = 'none';
+    } else if (validSelectedValues.length === 1) {
+        const option = document.querySelector(`#cMovePacsSelect option[value="${validSelectedValues[0]}"]`);
+        hint.style.display = 'block';
+        hintText.textContent = `Selected: ${option ? option.textContent : 'Unknown PACS'}`;
+    } else {
+        // Get the names of selected PACS servers
+        const selectedPacsNames = validSelectedValues.map(value => {
+            const option = document.querySelector(`#cMovePacsSelect option[value="${value}"]`);
+            return option ? option.textContent : 'Unknown PACS';
+        });
+        
+        hint.style.display = 'block';
+        hintText.textContent = `Selected ${validSelectedValues.length} PACS servers: ${selectedPacsNames.join(', ')}`;
+    }
+}
+
+function updateCMoveButtonState() {
+    const select = document.getElementById('cMovePacsSelect');
+    const button = document.getElementById('cMoveExecuteBtn');
+    
+    const selectedValues = Array.from(select.selectedOptions).map(option => option.value);
+    const validSelectedValues = selectedValues.filter(value => value && value !== '');
+    
+    if (validSelectedValues.length > 0) {
+        button.disabled = false;
+        button.innerHTML = `<i class="fas fa-exchange-alt"></i> C-MOVE${validSelectedValues.length > 1 ? ` (${validSelectedValues.length} PACS)` : ''}`;
+    } else {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-exchange-alt"></i> C-MOVE';
     }
 }
 
 async function executeCMove() {
-    const destinationPacsId = document.getElementById('destinationPacsSelect').value;
-    const sourcePacsId = document.getElementById('queryPacsSelect').value;
+    const select = document.getElementById('cMovePacsSelect');
+    const selectedOptions = Array.from(select.selectedOptions).map(option => option.value);
+    const validSelectedPacsIds = selectedOptions.filter(value => value && value !== '');
     
-    if (!destinationPacsId) {
-        alert('Please select a destination PACS server');
+    if (validSelectedPacsIds.length === 0) {
+        alert('Please select at least one destination PACS server');
         return;
     }
     
@@ -1169,62 +1317,91 @@ async function executeCMove() {
         return;
     }
     
+    // Get source PACS info
+    const sourcePacsId = document.getElementById('queryPacsSelect').value;
+    const sourcePacsName = document.getElementById('queryPacsSelect').selectedOptions[0]?.textContent || 'Unknown PACS';
+    
     // Show loading state
-    const cMoveBtn = document.querySelector('#cMoveModal .btn-primary');
+    const cMoveBtn = document.getElementById('cMoveExecuteBtn');
     const originalContent = cMoveBtn.innerHTML;
     cMoveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Moving...';
     cMoveBtn.disabled = true;
     
-    // Get PACS names for logging
-    const sourcePacsName = document.getElementById('queryPacsSelect').selectedOptions[0].textContent;
-    const destinationPacsName = document.getElementById('destinationPacsSelect').selectedOptions[0].textContent;
-    
-    // Add log entry
-    addLogEntry('info', `Starting C-MOVE operation from ${sourcePacsName} to ${destinationPacsName}`);
+    // Add initial log entry
+    addLogEntry('info', `Starting C-MOVE operation from ${sourcePacsName} to ${validSelectedPacsIds.length} destination PACS`);
     addLogEntry('info', `Moving study: ${currentStudyForCMove.study_uid.substring(0, 40)}...`);
     
+    let successCount = 0;
+    let failureCount = 0;
+    
     try {
-        const response = await fetch('/api/pacs/c-move', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                source_pacs_id: sourcePacsId,
-                destination_pacs_id: destinationPacsId,
-                study_uid: currentStudyForCMove.study_uid,
-                patient_id: currentStudyForCMove.patient_id
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            addLogEntry('success', `C-MOVE operation completed successfully`);
+        // Execute C-MOVE operations sequentially
+        for (let i = 0; i < validSelectedPacsIds.length; i++) {
+            const destinationPacsId = validSelectedPacsIds[i];
+            const destinationPacsName = document.querySelector(`#cMovePacsSelect option[value="${destinationPacsId}"]`)?.textContent || 'Unknown PACS';
             
-            // Add command output if available
-            if (data.command_output) {
-                addCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
+            addLogEntry('info', `C-MOVE ${i + 1}/${validSelectedPacsIds.length}: ${sourcePacsName} → ${destinationPacsName}`);
+            
+            try {
+                const response = await fetch('/api/pacs/c-move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        source_pacs_id: sourcePacsId,
+                        destination_pacs_id: destinationPacsId,
+                        study_uid: currentStudyForCMove.study_uid,
+                        patient_id: currentStudyForCMove.patient_id
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    successCount++;
+                    addLogEntry('success', `C-MOVE ${i + 1}/${validSelectedPacsIds.length}: Successfully moved to ${destinationPacsName}`);
+                    
+                    // Add command output if available
+                    if (data.command_output) {
+                        addCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
+                    }
+                } else {
+                    failureCount++;
+                    addLogEntry('error', `C-MOVE ${i + 1}/${validSelectedPacsIds.length}: Failed to move to ${destinationPacsName} - ${data.error}`);
+                    
+                    if (data.command_output) {
+                        addCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
+                    }
+                }
+            } catch (error) {
+                failureCount++;
+                addLogEntry('error', `C-MOVE ${i + 1}/${validSelectedPacsIds.length}: Network error for ${destinationPacsName} - ${error.message}`);
             }
+        }
+        
+        // Summary
+        if (successCount > 0) {
+            addLogEntry('success', `C-MOVE operations completed: ${successCount} successful, ${failureCount} failed`);
             
             // Close the C-MOVE modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('cMoveModal'));
             modal.hide();
             
             // Show success message
-            alert('C-MOVE operation completed successfully. Check the DICOM Command Log for details.');
-        } else {
-            addLogEntry('error', `C-MOVE operation failed: ${data.error}`);
-            
-            if (data.command_output) {
-                addCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
+            if (failureCount === 0) {
+                alert(`C-MOVE operations completed successfully! Moved study to ${successCount} PACS server(s).`);
+            } else {
+                alert(`C-MOVE operations completed with mixed results: ${successCount} successful, ${failureCount} failed. Check the DICOM Command Log for details.`);
             }
-            
-            alert(`C-MOVE operation failed: ${data.error}`);
+        } else {
+            addLogEntry('error', `All C-MOVE operations failed (${failureCount} attempts)`);
+            alert(`All C-MOVE operations failed. Check the DICOM Command Log for details.`);
         }
+        
     } catch (error) {
-        addLogEntry('error', `C-MOVE network error: ${error.message}`);
-        alert(`Network error during C-MOVE: ${error.message}`);
+        addLogEntry('error', `C-MOVE operation error: ${error.message}`);
+        alert(`Error during C-MOVE operations: ${error.message}`);
     } finally {
         cMoveBtn.innerHTML = originalContent;
         cMoveBtn.disabled = false;
