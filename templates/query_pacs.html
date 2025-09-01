@@ -327,10 +327,10 @@ async function loadPacsConfigs() {
             });
             
             // Initialize tosijs if available
-            if (window.tosijs) {
+            if (window.tosijsui) {
                 setTimeout(() => {
                     try {
-                        window.tosijs('#queryPacsSelect', {
+                        window.tosijsui.select('#queryPacsSelect', {
                             search: { enabled: true, placeholder: 'Search PACS servers...' },
                             multiple: true,
                             placeholder: 'Select one or more PACS servers...',
@@ -354,47 +354,6 @@ async function loadPacsConfigs() {
             
         } else {
             select.innerHTML = '<option value="">No PACS configurations available</option>';
-        }
-            console.error('Error in filterPacsByEnvironment:', error);
-            // Fallback: load all PACS configs without filtering
-            console.log('Using fallback: loading all PACS configs');
-            const select = document.getElementById('queryPacsSelect');
-            select.innerHTML = '';
-            
-            window.allPacsConfigs.forEach(config => {
-                const option = document.createElement('option');
-                option.value = config.id;
-                option.textContent = `${config.name} (${config.host}:${config.port})`;
-                option.dataset.pacsName = config.name;
-                option.dataset.pacsHost = config.host;
-                option.dataset.pacsPort = config.port;
-                option.dataset.environment = config.environment;
-                
-                if (config.is_default) {
-                    option.selected = true;
-                }
-                
-                select.appendChild(option);
-            });
-            
-            // Initialize tosijs after populating options
-            if (window.tosijs) {
-                setTimeout(() => {
-                    try {
-                        window.tosijs('#queryPacsSelect', {
-                            search: { enabled: true, placeholder: 'Search PACS servers...' },
-                            multiple: true,
-                            placeholder: 'Select one or more PACS servers...',
-                            onChange: function(selectedValues) {
-                                updateSelectedPacsHint(selectedValues);
-                            }
-                        });
-                        console.log('Tosijs initialized in fallback');
-                    } catch (error) {
-                        console.error('Error initializing tosijs in fallback:', error);
-                    }
-                }, 100);
-            }
         }
         
     } catch (error) {
@@ -466,8 +425,8 @@ function filterPacsByEnvironment() {
     });
             
             // Initialize tosijs-ui for multi-select with search
-            console.log('Tosijs available:', !!window.tosijs);
-            if (window.tosijs) {
+            console.log('Tosijs available:', !!window.tosijsui);
+            if (window.tosijsui) {
                 setTimeout(() => {
                     try {
                         // Destroy existing instance if it exists
@@ -475,7 +434,7 @@ function filterPacsByEnvironment() {
                             select.tosijsInstance.destroy();
                         }
                         
-                        window.tosijs('#queryPacsSelect', {
+                        window.tosijsui.select('#queryPacsSelect', {
                             search: {
                                 enabled: true,
                                 placeholder: 'Search PACS servers...'
@@ -534,7 +493,7 @@ function updateSelectedPacsHint(selectedValues = null) {
     
     if (!selectedValues) {
         // Try to get selected values from tosijs instance first
-        if (window.tosijs && select.tosijsInstance) {
+        if (window.tosijsui && select.tosijsInstance) {
             selectedValues = select.tosijsInstance.getValue();
         } else {
             // Fallback to standard selectedOptions
@@ -654,7 +613,7 @@ async function queryPacs() {
     let selectedOptions;
     
     // Try to get selected options from tosijs instance first
-    if (window.tosijs && select.tosijsInstance) {
+    if (window.tosijsui && select.tosijsInstance) {
         const selectedValues = select.tosijsInstance.getValue();
         selectedOptions = Array.from(select.options).filter(option => 
             selectedValues.includes(option.value)
@@ -954,9 +913,9 @@ function displayResults(results, queryInfo) {
     addCompactStyles();
     
     // Initialize tosijs for sorting and pagination
-    if (window.tosijs) {
-        setTimeout(() => {
-            window.tosijs('#resultsTable', {
+            if (window.tosijsui) {
+            setTimeout(() => {
+                window.tosijsui.dataTable('#resultsTable', {
                 pagination: {
                     enabled: true,
                     pageSize: 10
