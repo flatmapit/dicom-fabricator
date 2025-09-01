@@ -326,31 +326,10 @@ async function loadPacsConfigs() {
                 select.appendChild(option);
             });
             
-            // Initialize tosijs if available
-            if (window.tosijsui) {
-                setTimeout(() => {
-                    try {
-                        window.tosijsui.select('#queryPacsSelect', {
-                            search: { enabled: true, placeholder: 'Search PACS servers...' },
-                            multiple: true,
-                            placeholder: 'Select one or more PACS servers...',
-                            onChange: function(selectedValues) {
-                                updateSelectedPacsHint(selectedValues);
-                            }
-                        });
-                    } catch (error) {
-                        // Fallback to standard select
-                        select.addEventListener('change', function() {
-                            updateSelectedPacsHint();
-                        });
-                    }
-                }, 100);
-            } else {
-                // Fallback to standard select
-                select.addEventListener('change', function() {
-                    updateSelectedPacsHint();
-                });
-            }
+            // Use standard select for now (tosijs is causing issues)
+            select.addEventListener('change', function() {
+                updateSelectedPacsHint();
+            });
             
         } else {
             select.innerHTML = '<option value="">No PACS configurations available</option>';
@@ -492,13 +471,8 @@ function updateSelectedPacsHint(selectedValues = null) {
     const select = document.getElementById('queryPacsSelect');
     
     if (!selectedValues) {
-        // Try to get selected values from tosijs instance first
-        if (window.tosijsui && select.tosijsInstance) {
-            selectedValues = select.tosijsInstance.getValue();
-        } else {
-            // Fallback to standard selectedOptions
-            selectedValues = Array.from(select.selectedOptions).map(option => option.value);
-        }
+        // Get selected values from standard selectedOptions
+        selectedValues = Array.from(select.selectedOptions).map(option => option.value);
     }
     
     // Filter out empty values
@@ -612,16 +586,8 @@ async function queryPacs() {
     const select = document.getElementById('queryPacsSelect');
     let selectedOptions;
     
-    // Try to get selected options from tosijs instance first
-    if (window.tosijsui && select.tosijsInstance) {
-        const selectedValues = select.tosijsInstance.getValue();
-        selectedOptions = Array.from(select.options).filter(option => 
-            selectedValues.includes(option.value)
-        );
-    } else {
-        // Fallback to standard selectedOptions
-        selectedOptions = select.selectedOptions;
-    }
+    // Get selected options from standard selectedOptions
+    selectedOptions = select.selectedOptions;
     const patientName = document.getElementById('patientNameQuery').value.trim();
     const patientId = document.getElementById('patientIdQuery').value.trim();
     const accession = document.getElementById('accessionQuery').value.trim();
@@ -912,24 +878,8 @@ function displayResults(results, queryInfo) {
     // Add compact CSS styles
     addCompactStyles();
     
-    // Initialize tosijs for sorting and pagination
-            if (window.tosijsui) {
-            setTimeout(() => {
-                window.tosijsui.dataTable('#resultsTable', {
-                pagination: {
-                    enabled: true,
-                    pageSize: 10
-                },
-                search: {
-                    enabled: true,
-                    placeholder: 'Search results...'
-                },
-                sort: {
-                    enabled: true
-                }
-            });
-        }, 100);
-    }
+    // Note: DataTable functionality removed for now due to tosijs issues
+    // Standard HTML table will be used instead
 }
 
 function displayError(error) {
