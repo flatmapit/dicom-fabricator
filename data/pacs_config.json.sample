@@ -5,15 +5,21 @@
     "description": "Local Orthanc PACS server for testing",
     "host": "localhost",
     "port": 4242,
-    "aet": "DICOMFAB",
+    "aet_find": "DICOMFAB",
+    "aet_store": "DICOMFAB",
+    "aet_echo": "DICOMFAB",
     "aec": "ORTHANC",
+    "environment": "test",
     "is_default": true,
     "is_active": true,
     "created_date": "2025-01-01T00:00:00.000000",
     "modified_date": "2025-01-01T00:00:00.000000",
     "last_tested": "",
     "test_status": "unknown",
-    "test_message": ""
+    "test_message": "",
+    "move_routing": {
+      "example-orthanc-2": ""
+    }
   },
   "example-orthanc-2": {
     "id": "example-orthanc-2",
@@ -21,14 +27,20 @@
     "description": "Second test PACS server",
     "host": "localhost",
     "port": 4243,
-    "aet": "DICOMFAB",
+    "aet_find": "DICOMFAB",
+    "aet_store": "DICOMFAB",
+    "aet_echo": "DICOMFAB",
     "aec": "TESTPACS2",
+    "environment": "test",
     "is_default": false,
     "is_active": true,
     "created_date": "2025-01-01T00:00:00.000000",
     "modified_date": "2025-01-01T00:00:00.000000",
     "last_tested": "",
     "test_status": "unknown",
-    "test_message": ""
+    "test_message": "",
+    "move_routing": {
+      "example-orthanc-1": ""
+    }
   }
 }

@@ -222,25 +222,49 @@ For detailed authentication setup, see [Authentication Setup Guide](docs/AUTHENT
 
 ### PACS Configuration
 
-Copy the sample configuration and update with your PACS server details:
+The DICOM Fabricator uses an enhanced PACS configuration model with separate Application Entity Titles (AETs) for different operations:
 
+#### New AE Model
+- **C-FIND AET**: Used for querying studies from PACS
+- **C-STORE AET**: Used for sending studies to PACS (optional - leave blank to disable C-STORE)
+- **C-ECHO AET**: Used for connection testing
+- **C-MOVE Routing**: Configurable routing table for C-MOVE operations between PACS
+
+#### Configuration Setup
+
+1. **Copy the sample configuration:**
 ```bash
 cp data/pacs_config.json.sample data/pacs_config.json
 ```
 
-Edit `data/pacs_config.json` with your PACS server information:
-
+2. **Edit `data/pacs_config.json` with your PACS server information:**
 ```json
 {
   "pacs-server-id": {
     "name": "Your PACS Server",
     "host": "pacs.example.com",
     "port": 104,
-    "aet": "DICOMFAB",
+    "aet_find": "DICOMFAB",
+    "aet_store": "DICOMFAB",
+    "aet_echo": "DICOMFAB",
     "aec": "PACS",
-    "environment": "test"
+    "environment": "test",
+    "move_routing": {
+      "other-pacs-id": "MOVE_AE_TITLE"
+    }
   }
 }
+```
+
+3. **Configure C-MOVE routing:**
+   - Use the PACS management interface to configure C-MOVE routing tables
+   - Each PACS can have different AE titles for C-MOVE to other PACS
+   - Leave blank if C-MOVE is not supported to a particular destination
+
+#### Migration from Old Configuration
+If you have an existing configuration, run the migration script:
+```bash
+python3 scripts/migrate_pacs_config.py
 ```
 
 ### Patient Configuration

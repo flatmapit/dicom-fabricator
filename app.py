@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from dicom_fabricator import DICOMFabricator
 from patient_config import PatientRegistry, PatientRecord
-from pacs_config import PacsConfigManager
+from src.pacs_config import PacsConfigManager
 from auth import auth_manager, login_required, permission_required, any_permission_required, get_current_user, login_user, logout_user, is_authenticated
 from enterprise_auth import get_enterprise_auth_manager
 from group_mapper import get_group_mapper
@@ -1712,10 +1712,17 @@ def send_study_to_pacs():
             'series_count': len(set(str(pydicom.dcmread(str(f)).SeriesInstanceUID) for f in dcm_files))
         }
         
+        # Check if PACS supports C-STORE
+        if not pacs_config.aet_store or not pacs_config.aet_store.strip():
+            return jsonify({
+                'success': False,
+                'error': f'PACS {pacs_config.name} does not support C-STORE operations (no C-STORE AE configured)'
+            }), 400
+        
         # Send files to PACS using storescu with dynamic config
         cmd = [
             'storescu', 
-            '-aet', pacs_config.aet,  # Our Application Entity Title
+            '-aet', pacs_config.aet_store,  # Our C-STORE Application Entity Title
             '-aec', pacs_config.aec,  # PACS Application Entity Title
             pacs_config.host, str(pacs_config.port)  # PACS host and port
         ] + [str(f) for f in dcm_files]
@@ -1804,7 +1811,9 @@ def list_pacs_configs():
                     'description': config.description,
                     'host': config.host,
                     'port': config.port,
-                    'aet': config.aet,
+                    'aet_find': config.aet_find,
+                    'aet_store': config.aet_store,
+                    'aet_echo': config.aet_echo,
                     'aec': config.aec,
                     'environment': config.environment,
                     'is_default': config.is_default,
@@ -1813,7 +1822,8 @@ def list_pacs_configs():
                     'modified_date': config.modified_date,
                     'last_tested': config.last_tested,
                     'test_status': config.test_status,
-                    'test_message': config.test_message
+                    'test_message': config.test_message,
+                    'move_routing': config.move_routing
                 } for config in configs
             ]
         })
@@ -1830,7 +1840,7 @@ def create_pacs_config():
         data = request.json
         
         # Validate required fields
-        required_fields = ['name', 'host', 'port', 'aet', 'aec']
+        required_fields = ['name', 'host', 'port', 'aet_find', 'aet_store', 'aet_echo', 'aec']
         for field in required_fields:
             if field not in data:
                 return jsonify({
@@ -1844,7 +1854,9 @@ def create_pacs_config():
             description=data.get('description', ''),
             host=data['host'],
             port=int(data['port']),
-            aet=data['aet'],
+            aet_find=data['aet_find'],
+            aet_store=data['aet_store'],
+            aet_echo=data['aet_echo'],
             aec=data['aec'],
             environment=data.get('environment', 'test'),
             is_default=data.get('is_default', False)
@@ -1859,13 +1871,16 @@ def create_pacs_config():
                 'description': config.description,
                 'host': config.host,
                 'port': config.port,
-                'aet': config.aet,
+                'aet_find': config.aet_find,
+                'aet_store': config.aet_store,
+                'aet_echo': config.aet_echo,
                 'aec': config.aec,
                 'environment': config.environment,
                 'is_default': config.is_default,
                 'is_active': config.is_active,
                 'created_date': config.created_date,
-                'modified_date': config.modified_date
+                'modified_date': config.modified_date,
+                'move_routing': config.move_routing
             }
         })
         
@@ -2009,6 +2024,66 @@ def test_pacs_config(config_id):
         return jsonify({
             'success': False,
             'error': f'Error testing PACS configuration: {str(e)}'
+        }), 500
+
+@app.route('/api/pacs/configs/store-enabled', methods=['GET'])
+@login_required
+def get_store_enabled_pacs():
+    """Get PACS configurations that support C-STORE operations"""
+    try:
+        # Update user activity
+        update_user_activity()
+        store_configs = pacs_manager.get_store_enabled_configs()
+        return jsonify({
+            'success': True,
+            'configs': [
+                {
+                    'id': config.id,
+                    'name': config.name,
+                    'description': config.description,
+                    'host': config.host,
+                    'port': config.port,
+                    'aet_store': config.aet_store,
+                    'aec': config.aec,
+                    'environment': config.environment,
+                    'is_default': config.is_default,
+                    'is_active': config.is_active
+                } for config in store_configs
+            ]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error getting C-STORE enabled PACS: {str(e)}'
+        }), 500
+
+@app.route('/api/pacs/configs/<config_id>/routing', methods=['PUT'])
+@login_required
+@permission_required('pacs_configure_test')
+@permission_required('pacs_configure_prod')
+def update_pacs_routing(config_id):
+    """Update C-MOVE routing table for a PACS configuration"""
+    try:
+        data = request.json
+        routing_updates = data.get('routing_updates', {})
+        
+        success = pacs_manager.update_routing_table(config_id, routing_updates)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Routing table updated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'PACS configuration not found'
+            }), 404
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error updating routing table: {str(e)}'
         }), 500
 
 @app.route('/api/pacs/stats', methods=['GET'])
@@ -3030,14 +3105,13 @@ def c_move_study():
             'error': 'Destination PACS configuration not found'
         }), 404
     
-    # Pre-flight check: Test if destination PACS is reachable from source PACS
-    routing_check_result = check_pacs_routing(source_pacs, destination_pacs)
-    if not routing_check_result['success']:
+    # Check if C-MOVE is supported from source to destination
+    move_ae = pacs_manager.get_move_ae(source_pacs_id, destination_pacs_id)
+    if not move_ae or not move_ae.strip():
         return jsonify({
             'success': False,
-            'error': routing_check_result['error'],
-            'details': routing_check_result.get('details', {}),
-            'suggestion': 'Consider using C-STORE to directly send the study to the destination PACS, or configure DICOM routing between the PACS servers.'
+            'error': f'C-MOVE not configured from {source_pacs.name} to {destination_pacs.name}',
+            'suggestion': 'Configure the C-MOVE routing table or use C-STORE to directly send the study to the destination PACS.'
         }), 400
     
     try:
@@ -3046,9 +3120,9 @@ def c_move_study():
         cmd = [
             'movescu',
             '-v',  # Verbose output
-            '-aet', 'DICOMFAB',  # Our AE title
+            '-aet', source_pacs.aet_find,  # Our AE title for C-FIND
             '-aec', source_pacs.aec,  # Source PACS AE title
-            '-aem', destination_pacs.aec,  # Destination AE title (move destination)
+            '-aem', move_ae,  # Destination AE title from routing table
             source_pacs.host, str(source_pacs.port),  # Source PACS connection
             '-k', f'StudyInstanceUID={study_uid}',  # Study to move
             '-k', 'QueryRetrieveLevel=STUDY'  # Query/retrieve level

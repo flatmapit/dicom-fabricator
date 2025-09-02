@@ -19,7 +19,9 @@ class PacsConfiguration:
     description: str
     host: str
     port: int
-    aet: str  # Application Entity Title (our AET when connecting)
+    aet_find: str  # AE for C-FIND queries
+    aet_store: str  # AE for C-STORE operations (optional)
+    aet_echo: str  # AE for C-ECHO tests
     aec: str  # Called Application Entity (PACS AET)
     environment: str = "test"  # test, production, or both
     is_default: bool = False
@@ -29,11 +31,14 @@ class PacsConfiguration:
     last_tested: str = ""
     test_status: str = "unknown"  # unknown, success, failed
     test_message: str = ""
-
+    move_routing: Dict[str, str] = None  # Map of destination PACS ID -> AE for C-MOVE
+    
     def __post_init__(self):
         if not self.created_date:
             self.created_date = datetime.now().isoformat()
         self.modified_date = datetime.now().isoformat()
+        if self.move_routing is None:
+            self.move_routing = {}
 
 
 class PacsConfigManager:
@@ -51,11 +56,13 @@ class PacsConfigManager:
             # Add default configurations
             orthanc_test_config = PacsConfiguration(
                 id=str(uuid.uuid4()),
-                name="Orthanc Test PACS",
-                description="Local Orthanc PACS server for testing",
+                name="Test PACS 1",
+                description="Primary test PACS server",
                 host="localhost",
                 port=4242,
-                aet="DICOMFAB",
+                aet_find="DICOMFAB",
+                aet_store="DICOMFAB",
+                aet_echo="DICOMFAB",
                 aec="ORTHANC",
                 environment="test",
                 is_default=True,
@@ -64,25 +71,29 @@ class PacsConfigManager:
             
             orthanc_prod_config = PacsConfiguration(
                 id=str(uuid.uuid4()),
-                name="Orthanc Production PACS",
-                description="Local Orthanc PACS server for production",
+                name="Test PACS 2",
+                description="Secondary test PACS server",
                 host="localhost",
                 port=4243,
-                aet="DICOMFAB",
-                aec="ORTHANC_PROD",
-                environment="production",
+                aet_find="DICOMFAB",
+                aet_store="DICOMFAB",
+                aet_echo="DICOMFAB",
+                aec="TESTPACS2",
+                environment="test",
                 is_default=False,
                 is_active=True
             )
             
             testpacs_test_config = PacsConfiguration(
                 id=str(uuid.uuid4()),
-                name="Test PACS",
-                description="Generic test PACS configuration",
+                name="Test PACS 3",
+                description="Tertiary test PACS server",
                 host="localhost",
                 port=4244,
-                aet="DICOMFAB", 
-                aec="TESTPACS",
+                aet_find="DICOMFAB",
+                aet_store="DICOMFAB",
+                aet_echo="DICOMFAB",
+                aec="TESTPACS3",
                 environment="test",
                 is_default=False,
                 is_active=True
@@ -90,13 +101,15 @@ class PacsConfigManager:
             
             testpacs_prod_config = PacsConfiguration(
                 id=str(uuid.uuid4()),
-                name="Production PACS",
-                description="Production PACS configuration",
+                name="Prod PACS 1",
+                description="Primary production PACS server",
                 host="localhost",
                 port=4245,
-                aet="DICOMFAB", 
-                aec="PRODPACS",
-                environment="production",
+                aet_find="DICOMFAB",
+                aet_store="DICOMFAB",
+                aet_echo="DICOMFAB",
+                aec="ORTHANC",
+                environment="prod",
                 is_default=False,
                 is_active=True
             )
@@ -135,8 +148,23 @@ class PacsConfigManager:
             print(f"Error saving PACS configs: {e}")
     
     def create_config(self, name: str, description: str, host: str, port: int,
-                     aet: str, aec: str, environment: str = "test", is_default: bool = False) -> PacsConfiguration:
+                     aet_find: str, aet_store: str, aet_echo: str, aec: str, 
+                     environment: str = "test", is_default: bool = False) -> PacsConfiguration:
         """Create a new PACS configuration"""
+        # Validate required fields
+        if not name or not name.strip():
+            raise ValueError("PACS name cannot be empty")
+        if not host or not host.strip():
+            raise ValueError("Host cannot be empty")
+        if port <= 0 or port > 65535:
+            raise ValueError("Port must be between 1 and 65535")
+        if not aet_find or not aet_find.strip():
+            raise ValueError("C-FIND AE cannot be empty")
+        if not aet_echo or not aet_echo.strip():
+            raise ValueError("C-ECHO AE cannot be empty")
+        if not aec or not aec.strip():
+            raise ValueError("PACS AEC cannot be empty")
+        
         # If this is set as default, unset other defaults
         if is_default:
             self._unset_all_defaults()
@@ -147,11 +175,16 @@ class PacsConfigManager:
             description=description,
             host=host,
             port=port,
-            aet=aet,
+            aet_find=aet_find,
+            aet_store=aet_store,
+            aet_echo=aet_echo,
             aec=aec,
             environment=environment,
             is_default=is_default
         )
+        
+        # Pre-populate routing table with other PACS
+        self._populate_routing_table(config)
         
         self.configs[config.id] = config
         self.save_configs()
@@ -221,6 +254,18 @@ class PacsConfigManager:
         for config in self.configs.values():
             config.is_default = False
     
+    def _populate_routing_table(self, new_config: PacsConfiguration):
+        """Pre-populate routing table with other PACS"""
+        for other_config in self.configs.values():
+            if other_config.id != new_config.id:
+                # Add empty entry for manual configuration
+                new_config.move_routing[other_config.id] = ""
+        
+        # Also update existing configs to include the new one
+        for existing_config in self.configs.values():
+            if existing_config.id != new_config.id:
+                existing_config.move_routing[new_config.id] = ""
+    
     def test_connection(self, config_id: str) -> Dict[str, Any]:
         """Test connection to a PACS configuration"""
         import subprocess
@@ -233,7 +278,7 @@ class PacsConfigManager:
             # Use echoscu to test connection
             cmd = [
                 'echoscu',
-                '-aet', config.aet,
+                '-aet', config.aet_echo,
                 '-aec', config.aec,
                 config.host, str(config.port)
             ]
@@ -323,3 +368,43 @@ class PacsConfigManager:
             "last_test_time": last_test_time,
             "time_since_last_test": time_since_last_test
         }
+    
+    def get_store_enabled_configs(self) -> List[PacsConfiguration]:
+        """Get PACS configurations that support C-STORE (have aet_store configured)"""
+        return [c for c in self.configs.values() if c.is_active and c.aet_store and c.aet_store.strip()]
+    
+    def get_move_ae(self, source_config_id: str, destination_config_id: str) -> Optional[str]:
+        """Get the AE title to use for C-MOVE from source to destination PACS"""
+        source_config = self.get_config(source_config_id)
+        if not source_config:
+            return None
+        
+        # Check if destination config exists
+        dest_config = self.get_config(destination_config_id)
+        if not dest_config:
+            return None
+        
+        return source_config.move_routing.get(destination_config_id, "")
+    
+    def update_routing_table(self, config_id: str, routing_updates: Dict[str, str]) -> bool:
+        """Update the C-MOVE routing table for a PACS configuration"""
+        config = self.get_config(config_id)
+        if not config:
+            return False
+        
+        # Validate routing updates
+        if not routing_updates:
+            return True  # Empty updates are valid (no-op)
+        
+        # Update routing table with validation
+        for dest_id, ae in routing_updates.items():
+            # Validate destination exists
+            if dest_id and dest_id != config_id:  # Can't route to self
+                dest_config = self.get_config(dest_id)
+                if dest_config:
+                    # Convert None to empty string
+                    config.move_routing[dest_id] = ae if ae is not None else ""
+        
+        config.modified_date = datetime.now().isoformat()
+        self.save_configs()
+        return True

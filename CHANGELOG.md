@@ -5,6 +5,42 @@ All notable changes to DICOM Fabricator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-01-XX
+
+### Enhanced PACS AE Management Release
+
+#### PACS Configuration Enhancement
+- **Separate AE Titles**: Implemented separate Application Entity Titles for different DICOM operations
+  - **C-FIND AET**: Dedicated AE for querying studies from PACS
+  - **C-STORE AET**: Dedicated AE for sending studies to PACS (optional - can be disabled)
+  - **C-ECHO AET**: Dedicated AE for connection testing
+- **C-MOVE Routing Table**: Configurable routing table for C-MOVE operations between PACS servers
+- **Enhanced PACS Manager**: Updated PACS configuration management with new AE fields and routing support
+- **Migration Support**: Automatic migration script for existing PACS configurations
+
+#### User Interface Improvements
+- **Enhanced PACS Management UI**: Updated interface with separate AE fields and routing table management
+- **C-MOVE Routing Interface**: New modal for configuring C-MOVE routing between PACS servers
+- **Improved Table Display**: Updated PACS configuration table to show all AE types
+- **Routing Table Editor**: Interactive interface for configuring C-MOVE routing with visual status indicators
+
+#### API Enhancements
+- **New API Endpoints**: Added endpoints for C-STORE enabled PACS and routing table management
+- **Enhanced C-MOVE Operations**: Updated C-MOVE operations to use proper routing table
+- **C-STORE Filtering**: PACS without C-STORE AE are filtered from send operations
+- **Routing Table API**: RESTful API for managing C-MOVE routing configurations
+
+#### Documentation Updates
+- **Setup Instructions**: Updated PACS setup documentation for new AE model
+- **Configuration Guide**: Enhanced configuration documentation with AE field explanations
+- **Migration Guide**: Documentation for migrating from old to new configuration structure
+
+#### Technical Improvements
+- **Backward Compatibility**: Clean migration path from old single-AE model
+- **Error Handling**: Improved error messages for missing C-MOVE routing configurations
+- **Validation**: Enhanced validation for AE title configurations
+- **Default Configurations**: Updated default PACS configurations with new naming scheme
+
 ## [1.2.0] - 2025-09-01
 
 ### Authentication & Authorization Release

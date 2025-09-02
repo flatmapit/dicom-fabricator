@@ -41,11 +41,25 @@ docker-compose down
 - **STOW-RS**: http://localhost:8042/dicom-web/
 
 ## DICOM Fabricator Connection Settings
-When configuring the DICOM Fabricator to send to this test PACS:
-- **AE Title (Calling)**: `DICOMFAB`
-- **AE Title (Called)**: `TESTPACS`
+When configuring the DICOM Fabricator to connect to this test PACS:
+
+### Basic Configuration
 - **Host**: `localhost`
 - **Port**: `4242`
+- **PACS AEC**: `ORTHANC` (or `TESTPACS` depending on container)
+
+### Application Entity Titles (AETs)
+The DICOM Fabricator now uses separate AETs for different operations:
+
+- **C-FIND AET**: `DICOMFAB` - Used for querying studies
+- **C-STORE AET**: `DICOMFAB` - Used for sending studies to PACS
+- **C-ECHO AET**: `DICOMFAB` - Used for connection testing
+
+### C-MOVE Routing
+For C-MOVE operations between PACS servers, configure the routing table:
+- Each PACS can have different AE titles for C-MOVE to other PACS
+- Leave blank if C-MOVE is not supported to a particular destination
+- Configure via the PACS management interface
 
 ## Useful Commands
 
