@@ -121,7 +121,7 @@ echo
 echo "Next steps:"
 echo "1. Start the web application:  python3 app.py"
 echo "2. Open browser to:            http://localhost:5001"
-echo "3. Optional - Start test PACS: cd test-pacs && ./setup.sh"
+echo "3. Optional - Start all PACS:  cd test-pacs && ./setup_all_pacs.sh start"
 echo
 echo "📖 For more information, see README.md"
 echo "🐛 Issues? https://github.com/brainsnorkel/DICOM_Fabricator/issues"

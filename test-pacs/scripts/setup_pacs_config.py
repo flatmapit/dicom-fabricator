@@ -24,7 +24,7 @@ def create_pacs_config() -> Dict[str, Any]:
             "aet_find": "DICOMFAB",
             "aet_store": "DICOMFAB",
             "aet_echo": "DICOMFAB",
-            "aec": "ORTHANC",
+            "aec": "TESTPACS",
             "environment": "test",
             "is_default": True,
             "is_active": True,
@@ -105,29 +105,29 @@ def create_pacs_config() -> Dict[str, Any]:
     # Test PACS 1 routing
     pacs_configs["338e008a-30a1-4e59-b9c6-df4d3b9b2d74"]["move_routing"] = {
         "72a5301c-c774-4d73-af88-0ebb3acfc1b0": "TESTPACS2",  # Test PACS 2
-        "f5c71abb-830c-4496-ad6d-c52965056509": "ORTHANC",    # Prod PACS 1
+        "f5c71abb-830c-4496-ad6d-c52965056509": "PRODPACS1",  # Prod PACS 1
         "9dbd2ccd-9986-49e6-b229-873813d178fa": "PRODPACS2"   # Prod PACS 2
     }
     
     # Test PACS 2 routing
     pacs_configs["72a5301c-c774-4d73-af88-0ebb3acfc1b0"]["move_routing"] = {
-        "338e008a-30a1-4e59-b9c6-df4d3b9b2d74": "ORTHANC",    # Test PACS 1
-        "f5c71abb-830c-4496-ad6d-c52965056509": "ORTHANC",    # Prod PACS 1
+        "338e008a-30a1-4e59-b9c6-df4d3b9b2d74": "TESTPACS1",  # Test PACS 1
+        "f5c71abb-830c-4496-ad6d-c52965056509": "PRODPACS1",  # Prod PACS 1
         "9dbd2ccd-9986-49e6-b229-873813d178fa": "PRODPACS2"   # Prod PACS 2
     }
     
     # Prod PACS 1 routing
     pacs_configs["f5c71abb-830c-4496-ad6d-c52965056509"]["move_routing"] = {
-        "338e008a-30a1-4e59-b9c6-df4d3b9b2d74": "ORTHANC",    # Test PACS 1
+        "338e008a-30a1-4e59-b9c6-df4d3b9b2d74": "TESTPACS1",  # Test PACS 1
         "72a5301c-c774-4d73-af88-0ebb3acfc1b0": "TESTPACS2",  # Test PACS 2
         "9dbd2ccd-9986-49e6-b229-873813d178fa": "PRODPACS2"   # Prod PACS 2
     }
     
     # Prod PACS 2 routing
     pacs_configs["9dbd2ccd-9986-49e6-b229-873813d178fa"]["move_routing"] = {
-        "338e008a-30a1-4e59-b9c6-df4d3b9b2d74": "ORTHANC",    # Test PACS 1
+        "338e008a-30a1-4e59-b9c6-df4d3b9b2d74": "TESTPACS1",  # Test PACS 1
         "72a5301c-c774-4d73-af88-0ebb3acfc1b0": "TESTPACS2",  # Test PACS 2
-        "f5c71abb-830c-4496-ad6d-c52965056509": "ORTHANC"     # Prod PACS 1
+        "f5c71abb-830c-4496-ad6d-c52965056509": "PRODPACS1"   # Prod PACS 1
     }
     
     return pacs_configs

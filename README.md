@@ -164,22 +164,29 @@ Download from [DCMTK website](https://dcmtk.org/en/dcmtk/dcmtk-downloads/)
 
 #### Automated Setup (Recommended)
 ```bash
-# Start test PACS environment
+# Start all 4 PACS (2 test + 2 prod) with correct configurations
 cd test-pacs
-./setup.sh
+./setup_all_pacs.sh start
 
-# Or start with troubleshooting tools
-./setup.sh troubleshoot
+# Check status of all PACS
+./setup_all_pacs.sh status
+
+# Stop all PACS
+./setup_all_pacs.sh stop
 ```
 
-This will start 2 test Orthanc PACS servers with full C-MOVE routing:
-- **Test PACS 1**: localhost:4242 (DICOM), localhost:8042 (HTTP)
-- **Test PACS 2**: localhost:4243 (DICOM), localhost:8043 (HTTP)
+This will start 4 Orthanc PACS servers with full C-MOVE routing:
+- **Test PACS 1**: localhost:4242 (DICOM), localhost:8042 (HTTP) - AEC: TESTPACS
+- **Test PACS 2**: localhost:4243 (DICOM), localhost:8043 (HTTP) - AEC: TESTPACS2
+- **Prod PACS 1**: localhost:4245 (DICOM), localhost:8045 (HTTP) - AEC: ORTHANC
+- **Prod PACS 2**: localhost:4246 (DICOM), localhost:8046 (HTTP) - AEC: PRODPACS2
 
 #### Available Options
-- `./setup.sh basic` - Start basic test PACS (default)
-- `./setup.sh troubleshoot` - Start PACS with troubleshooting container
-- `./setup.sh enhanced` - Start enhanced PACS with DICOM tools
+- `./setup_all_pacs.sh start` - Start all 4 PACS (2 test + 2 prod)
+- `./setup_all_pacs.sh status` - Check status of all PACS containers
+- `./setup_all_pacs.sh stop` - Stop all PACS containers
+- `./setup_all_pacs.sh restart` - Restart all PACS containers
+- `./setup_all_pacs.sh clean` - Stop and remove all containers and data
 - `./setup.sh stop` - Stop all test PACS containers
 - `./setup.sh clean` - Stop and remove all containers and data
 
