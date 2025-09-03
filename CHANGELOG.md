@@ -5,6 +5,27 @@ All notable changes to DICOM Fabricator will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2025-09-03
+
+### 🐛 Bug Fix Release
+
+#### Environment Filter Fixes
+- **C-MOVE Modal**: Fixed "Prod" filter not showing production PACS due to environment value mismatch
+- **PACS Query Interface**: Corrected environment filter values from 'production' to 'prod'
+- **PACS Management**: Fixed environment dropdown and color coding consistency
+- **Study Operations**: Updated environment filter values for proper filtering
+
+#### C-MOVE Configuration
+- **Complete Routing Matrix**: Configured C-MOVE routing between all 4 PACS (2 test, 2 prod)
+- **AE Title Management**: Proper C-MOVE AE titles configured for inter-PACS communication
+- **Configuration Reload**: Added runtime configuration reload capability
+
+#### Documentation & Media
+- **Demo Video**: Uploaded DICOM Fabricator demo video to S3 for public access
+- **CLAUDE.md**: Enhanced with detailed file structure and API documentation
+- **Authentication Docs**: Updated with comprehensive RBAC and permission information
+
+
 ## [1.2.1] - 2025-09-03
 
 ### 🐛 Bug Fix Release
