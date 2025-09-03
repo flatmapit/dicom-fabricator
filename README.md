@@ -4,14 +4,11 @@ DICOM Fabricator (DF) is a tool for PACS administrators and radiology clinical i
 
 Note: This tool works in test, but exercise caution with live/prod PACS and test in your environment carefully. 
 
-## 🎥 Quick Start Demo
+## 🎥 Quick Application Demo
 
 <div align="center">
 
-
 **[▶️ Watch Demo Video (2 minutes)](https://flatmapit-com-videos.s3.amazonaws.com/20250903DicomFab.mov)**
-
-*Complete walkthrough of DICOM Fabricator features and workflows*
 
 </div>
 
