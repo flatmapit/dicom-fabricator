@@ -2,6 +2,10 @@
 
 This document provides a visual overview of the key features and common activities supported by DICOM Fabricator.
 
+## Quick Links
+- [Feature Permission Matrix](PERMISSIONS_TO_FEATURES.md) - Complete mapping of features to user roles and permissions
+- [Authentication Setup](AUTHENTICATION_SETUP.md) - Configuration guide for authentication and user management
+
 ## Main Dashboard
 
 The main dashboard provides an overview of the system status and quick access to all major features.
@@ -73,6 +77,8 @@ Manage PACS server connections and perform DICOM operations.
 
 ![PACS Management](images/pacs-management.png)
 
+![Pacs Config](images/pacs_config_cmoveae.png)
+
 **Common Activities:**
 - **Server Configuration**: Add and configure PACS server connections
 - **Connectivity Testing**: Verify PACS server accessibility
@@ -92,6 +98,17 @@ Search and retrieve studies from connected PACS servers.
 - **Result Display**: View query results with study details
 - **Study Retrieval**: Download studies from PACS servers
 - **Export Results**: Save query results in various formats
+
+## Access Control and Permissions
+
+DICOM Fabricator includes role-based access control to manage user permissions across different environments.
+
+**Key Roles:**
+- **Admin**: Full system access, user management, and PACS administration
+- **Test Write/Read**: Access to test environment PACS operations
+- **Prod Write/Read**: Access to production environment PACS operations
+
+For detailed permission mappings, see the [Feature Permission Matrix](PERMISSIONS_TO_FEATURES.md).
 
 ## Getting Started Workflow
 

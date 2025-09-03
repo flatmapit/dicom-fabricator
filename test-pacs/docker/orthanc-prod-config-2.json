@@ -1,6 +1,6 @@
 {
-  "Name": "Production PACS",
-  "DicomAet": "ORTHANC",
+  "Name": "Production PACS 2",
+  "DicomAet": "PRODPACS2",
   "DicomPort": 4242,
   "HttpPort": 8042,
   "StorageDirectory": "/var/lib/orthanc/db",
@@ -14,6 +14,7 @@
   },
   "DicomModalities": {
     "TESTPACS1": ["TESTPACS1", "orthanc-test-pacs", 4242],
-    "TESTPACS2": ["TESTPACS2", "orthanc-test-pacs-2", 4242]
+    "TESTPACS2": ["TESTPACS2", "orthanc-test-pacs-2", 4242],
+    "PRODPACS1": ["PRODPACS1", "orthanc-prod-pacs-1", 4242]
   }
 }

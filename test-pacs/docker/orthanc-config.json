@@ -1,5 +1,5 @@
 {
-  "Name": "Orthanc Test PACS 2",
+  "Name": "Test PACS for DICOM Fabricator",
   "StorageDirectory": "/var/lib/orthanc/db",
   "IndexDirectory": "/var/lib/orthanc/db",
   "StorageCompression": false,
@@ -12,27 +12,34 @@
   "HttpCompressionEnabled": true,
   
   "DicomServerEnabled": true,
-  "DicomAet": "TESTPACS2",
+  "DicomAet": "TESTPACS",
   "DicomCheckCalledAet": false,
   "DicomPort": 4242,
   "DefaultEncoding": "Latin1",
-  "AcceptedTransferSyntaxes": ["1.2.840.10008.1.*"],
+  "AcceptedTransferSyntaxes": [
+    "1.2.840.10008.1.2",
+    "1.2.840.10008.1.2.1",
+    "1.2.840.10008.1.2.2"
+  ],
   
-  "UnknownSopClassAccepted": false,
+  "UnknownSopClassAccepted": true,
   "DicomAlwaysAllowEcho": true,
   "DicomAlwaysAllowStore": true,
   "DicomAlwaysAllowFind": true,
+  "DicomAlwaysAllowMove": true,
   "DicomCheckModalityHost": false,
   "DicomScpTimeout": 30,
   
   "DicomModalities": {
     "DICOMFAB": ["DICOMFAB", "host.docker.internal", 11112],
-    "SELF": ["TESTPACS2", "localhost", 4242],
-    "TESTPACS": ["TESTPACS", "orthanc-test-pacs", 4242]
+    "SELF": ["TESTPACS", "localhost", 4242],
+    "TESTPACS2": ["TESTPACS2", "orthanc-test-pacs-2", 4242],
+    "PRODPACS1": ["PRODPACS1", "orthanc-prod-pacs-1", 4242],
+    "PRODPACS2": ["PRODPACS2", "orthanc-prod-pacs-2", 4242]
   },
   
   "RegisteredUsers": {
-    "test2": "test456"
+    "test": "test123"
   },
   
   "AuthenticationEnabled": true,

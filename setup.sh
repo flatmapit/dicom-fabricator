@@ -41,10 +41,11 @@ else
 fi
 
 if [ ! -f "data/pacs_config.json" ]; then
-    echo "🖥️ Creating initial PACS configuration from sample..."
-    cp data/pacs_config.json.sample data/pacs_config.json
+    echo "🖥️ Creating initial PACS configuration with C-MOVE routing..."
+    python3 test-pacs/scripts/setup_pacs_config.py
 else
     echo "✅ PACS configuration already exists"
+    echo "ℹ️ To update PACS configuration with C-MOVE routing, run: python3 test-pacs/scripts/setup_pacs_config.py"
 fi
 
 # Check for DCMTK tools (REQUIRED for PACS operations)
@@ -120,7 +121,7 @@ echo
 echo "Next steps:"
 echo "1. Start the web application:  python3 app.py"
 echo "2. Open browser to:            http://localhost:5001"
-echo "3. Optional - Start PACS:      cd docker && docker compose up -d"
+echo "3. Optional - Start all PACS:  cd test-pacs && ./setup_all_pacs.sh start"
 echo
 echo "📖 For more information, see README.md"
 echo "🐛 Issues? https://github.com/brainsnorkel/DICOM_Fabricator/issues"

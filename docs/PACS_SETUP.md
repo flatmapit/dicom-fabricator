@@ -9,20 +9,59 @@ This project uses Orthanc as a local test PACS server for development and testin
 
 ## Quick Start
 
-### 1. Start the PACS Server
+### 1. Automated Setup (Recommended)
+The easiest way to set up all PACS servers with proper C-MOVE routing:
+
 ```bash
-docker-compose up -d
+# Set up PACS configuration with C-MOVE routing
+python3 setup_pacs_config.py
+
+# Start all PACS servers (test and production)
+./start_pacs.sh
 ```
 
-### 2. Access the Web Interface
-- URL: http://localhost:8042
-- Username: `test`
-- Password: `test123`
+This will:
+- Create a complete PACS configuration with C-MOVE routing between all servers
+- Start 4 PACS servers (2 test, 2 production) with proper inter-PACS routing
+- Configure all necessary AE titles for C-MOVE operations
 
-### 3. Stop the PACS Server
+### 2. Manual Setup
+If you prefer to set up PACS servers individually:
+
 ```bash
-docker-compose down
+# Start the main test PACS server
+cd docker && docker-compose up -d
+
+# Start additional PACS servers
+./start_pacs.sh
 ```
+
+### 3. Access the Web Interfaces
+- **Test PACS 1**: http://localhost:8042 (test/test123)
+- **Test PACS 2**: http://localhost:8043 (test/test123)
+- **Prod PACS 1**: http://localhost:8045 (test/test123)
+- **Prod PACS 2**: http://localhost:8046 (test/test123)
+
+### 4. Stop All PACS Servers
+```bash
+./stop_pacs.sh
+```
+
+## C-MOVE Routing Configuration
+
+The automated setup configures C-MOVE routing between all PACS servers:
+
+### Test Environment PACS
+| PACS Name | Port | AEC | C-MOVE Routes |
+|-----------|------|-----|---------------|
+| **Test PACS 1** | 4242 | ORTHANC | → Test PACS 2: `TESTPACS2`<br/>→ Prod PACS 1: `ORTHANC`<br/>→ Prod PACS 2: `PRODPACS2` |
+| **Test PACS 2** | 4243 | TESTPACS2 | → Test PACS 1: `ORTHANC`<br/>→ Prod PACS 1: `ORTHANC`<br/>→ Prod PACS 2: `PRODPACS2` |
+
+### Production Environment PACS
+| PACS Name | Port | AEC | C-MOVE Routes |
+|-----------|------|-----|---------------|
+| **Prod PACS 1** | 4245 | ORTHANC | → Test PACS 1: `ORTHANC`<br/>→ Test PACS 2: `TESTPACS2`<br/>→ Prod PACS 2: `PRODPACS2` |
+| **Prod PACS 2** | 4246 | PRODPACS2 | → Test PACS 1: `ORTHANC`<br/>→ Test PACS 2: `TESTPACS2`<br/>→ Prod PACS 1: `ORTHANC` |
 
 ## Connection Parameters
 
@@ -41,11 +80,25 @@ docker-compose down
 - **STOW-RS**: http://localhost:8042/dicom-web/
 
 ## DICOM Fabricator Connection Settings
-When configuring the DICOM Fabricator to send to this test PACS:
-- **AE Title (Calling)**: `DICOMFAB`
-- **AE Title (Called)**: `TESTPACS`
+When configuring the DICOM Fabricator to connect to this test PACS:
+
+### Basic Configuration
 - **Host**: `localhost`
 - **Port**: `4242`
+- **PACS AEC**: `ORTHANC` (or `TESTPACS` depending on container)
+
+### Application Entity Titles (AETs)
+The DICOM Fabricator now uses separate AETs for different operations:
+
+- **C-FIND AET**: `DICOMFAB` - Used for querying studies
+- **C-STORE AET**: `DICOMFAB` - Used for sending studies to PACS
+- **C-ECHO AET**: `DICOMFAB` - Used for connection testing
+
+### C-MOVE Routing
+For C-MOVE operations between PACS servers, configure the routing table:
+- Each PACS can have different AE titles for C-MOVE to other PACS
+- Leave blank if C-MOVE is not supported to a particular destination
+- Configure via the PACS management interface
 
 ## Useful Commands
 

@@ -1,0 +1,39 @@
+{
+  "default_role": "test_read",
+  "default_permissions": [
+    "dicom_view",
+    "pacs_query_test"
+  ],
+  "mappings": {
+    "DF-Admin": {
+      "enterprise_group": "DF-Admin",
+      "application_role": "admin",
+      "is_active": true,
+      "description": "Full system administration access"
+    },
+    "DF-TestWrite": {
+      "enterprise_group": "DF-TestWrite",
+      "application_role": "test_write",
+      "is_active": true,
+      "description": "Test environment write access - can query, C-STORE and C-MOVE to test PACS"
+    },
+    "DF-TestRead": {
+      "enterprise_group": "DF-TestRead",
+      "application_role": "test_read",
+      "is_active": true,
+      "description": "Test environment read access - can view status and query test PACS"
+    },
+    "DF-ProdWrite": {
+      "enterprise_group": "DF-ProdWrite",
+      "application_role": "prod_write",
+      "is_active": true,
+      "description": "Production environment write access - can query, C-STORE and C-MOVE to production PACS"
+    },
+    "DF-ProdRead": {
+      "enterprise_group": "DF-ProdRead",
+      "application_role": "prod_read",
+      "is_active": true,
+      "description": "Production environment read access - can view status and query production PACS"
+    }
+  }
+}

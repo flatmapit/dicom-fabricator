@@ -2,19 +2,64 @@
 
 DICOM Fabricator (DF) is a tool for PACS administrators and radiology clinical integrations developers and maintainers. DF is a DICOM study test data generation and PACS query system built with Python and Flask. DF allows you to query and C-MOVE across multiple PACS, create synthetic DICOM studies from user input or based on an HL7 ORM order message, and to monitor PACS status with C-ECHO.
 
+Note: This tool works in test, but exercise caution with live/prod PACS and test in your environment carefully. 
+
 ![Dashboard Screenshot](docs/images/dashboard.png)
+
+![PACS Context](docs/images/pacs-context-diag.png)
 
 
 *For a detailed visual overview of features and common activities, see [Feature Overview](docs/feature_overview.md)*
 
 ## Features
 
+- **Authentication & Authorization**: Local authentication, Active Directory, and SAML 2.0 support with simplified role-based access control
+- **Environment-Specific Roles**: Separate roles for test and production PACS operations with clear capability boundaries
+- **User Management**: Complete user administration interface with role-based permissions
 - **HL7 ORM Integration**: Parse HL7 ORM messages and generate corresponding DICOM studies
 - **DICOM Generation**: Create synthetic DICOM files with realistic metadata
-- **PACS Integration**: Send studies to PACS servers, query studies on one or more PACS, and perform C-MOVE operations
+- **Multi-PACS Integration**: Send studies to PACS servers, query studies on one or more PACS, and perform C-MOVE operations
 - **Patient Management**: Comprehensive patient registry with synthetic data generation
 - **Web Interface**: Modern Flask-based web application with Bootstrap UI
 - **Docker Support**: Easy deployment with Docker Compose for example test PACS servers
+
+## Role-Based Access Control
+
+DICOM Fabricator uses a simplified role-based permission system with the following roles:
+
+### Available Roles
+
+- **`admin`**: Full system access - can do anything including user management, PACS configuration, and all DICOM operations in both test and production environments
+- **`test_write`**: Test environment write access - can query, C-STORE and C-MOVE to test PACS, generate DICOM, and manage users
+- **`test_read`**: Test environment read access - can view status and query test PACS, generate DICOM, and manage users
+- **`prod_write`**: Production environment write access - can query, C-STORE and C-MOVE to production PACS, generate DICOM, and manage users
+- **`prod_read`**: Production environment read access - can view status and query production PACS, generate DICOM, and manage users
+
+### Enterprise Integration
+
+For Active Directory and SAML integration, use the following group naming convention with the `DF-` prefix:
+
+- `DF-Admin` → `admin` role
+- `DF-TestWrite` → `test_write` role
+- `DF-TestRead` → `test_read` role
+- `DF-ProdWrite` → `prod_write` role
+- `DF-ProdRead` → `prod_read` role
+
+The `DF-` prefix ensures namespace isolation and prevents accidental permission grants from similar group names in enterprise environments.
+
+### Migration from Permission-Based System
+
+If you're upgrading from a previous version that used individual permissions, run the migration script:
+
+```bash
+python3 scripts/migrate_users_to_roles.py
+```
+
+This script will:
+- Create a backup of your existing users file
+- Convert user permissions to appropriate roles
+- Remove the old permissions field
+- Preserve all other user data
 
 ## Architecture
 
@@ -117,16 +162,41 @@ sudo apt-get install dcmtk
 #### Windows
 Download from [DCMTK website](https://dcmtk.org/en/dcmtk/dcmtk-downloads/)
 
-### 5. Start PACS Servers (Optional)
+### 5. Start Test PACS Servers (Optional)
 
+#### Automated Setup (Recommended)
 ```bash
-cd docker
-docker-compose up -d
+# Start all 4 PACS (2 test + 2 prod) with correct configurations
+cd test-pacs
+./setup_all_pacs.sh start
+
+# Check status of all PACS
+./setup_all_pacs.sh status
+
+# Stop all PACS
+./setup_all_pacs.sh stop
 ```
 
-This will start two Orthanc PACS servers:
-- **Orthanc Test PACS**: localhost:4242 (DICOM), localhost:8042 (HTTP)
-- **Orthanc Test PACS 2**: localhost:4243 (DICOM), localhost:8043 (HTTP)
+This will start 4 Orthanc PACS servers with full C-MOVE routing:
+- **Test PACS 1**: localhost:4242 (DICOM), localhost:8042 (HTTP) - AEC: TESTPACS
+- **Test PACS 2**: localhost:4243 (DICOM), localhost:8043 (HTTP) - AEC: TESTPACS2
+- **Prod PACS 1**: localhost:4245 (DICOM), localhost:8045 (HTTP) - AEC: ORTHANC
+- **Prod PACS 2**: localhost:4246 (DICOM), localhost:8046 (HTTP) - AEC: PRODPACS2
+
+#### Available Options
+- `./setup_all_pacs.sh start` - Start all 4 PACS (2 test + 2 prod)
+- `./setup_all_pacs.sh status` - Check status of all PACS containers
+- `./setup_all_pacs.sh stop` - Stop all PACS containers
+- `./setup_all_pacs.sh restart` - Restart all PACS containers
+- `./setup_all_pacs.sh clean` - Stop and remove all containers and data
+- `./setup.sh stop` - Stop all test PACS containers
+- `./setup.sh clean` - Stop and remove all containers and data
+
+#### Legacy Setup (Alternative)
+```bash
+# Start all PACS servers (test and production)
+./start_pacs.sh
+```
 
 ### 6. Run the Application
 
@@ -138,26 +208,133 @@ The application will be available at `http://localhost:5001`
 
 ## Configuration
 
+### Authentication Setup
+
+DICOM Fabricator supports multiple authentication modes:
+
+#### Option 1: No Authentication (Default)
+The application runs without authentication for development and testing:
+
+```bash
+# No additional setup required
+python app.py
+```
+
+#### Option 2: Local Authentication
+Enable username/password authentication:
+
+1. **Create authentication configuration:**
+```bash
+cp config/auth_config.json.sample config/auth_config.json
+```
+
+2. **Edit `config/auth_config.json`:**
+```json
+{
+  "auth_enabled": true,
+  "enterprise_auth_enabled": false,
+  "default_user_permissions": [
+    "dicom_view",
+    "pacs_query_test"
+  ]
+}
+```
+
+3. **Create initial admin user:**
+```bash
+python3 -c "
+from src.auth import AuthManager
+auth = AuthManager()
+auth.create_user('admin', 'admin123', 'admin@example.com', 'admin')
+print('Admin user created: admin/admin123')
+"
+```
+
+#### Option 3: Enterprise Authentication (AD/SAML)
+For enterprise environments with Active Directory or SAML:
+
+1. **Enable enterprise authentication:**
+```json
+{
+  "auth_enabled": true,
+  "enterprise_auth_enabled": true,
+  "default_user_permissions": [
+    "dicom_view",
+    "pacs_query_test"
+  ]
+}
+```
+
+2. **Configure Active Directory:**
+```bash
+cp config/enterprise_auth.json.sample config/enterprise_auth.json
+# Edit with your AD server details
+```
+
+3. **Configure SAML:**
+```bash
+cp config/enterprise_auth.json.sample config/enterprise_auth.json
+# Edit with your SAML provider details
+```
+
+4. **Set up group mappings:**
+```bash
+cp config/group_mappings.json.sample config/group_mappings.json
+# Map AD/SAML groups to application roles
+```
+
+For detailed authentication setup, see [Authentication Setup Guide](docs/AUTHENTICATION_SETUP.md).
+
 ### PACS Configuration
 
-Copy the sample configuration and update with your PACS server details:
+The DICOM Fabricator uses an enhanced PACS configuration model with separate Application Entity Titles (AETs) for different operations:
 
+#### New AE Model
+- **C-FIND AET**: Used for querying studies from PACS
+- **C-STORE AET**: Used for sending studies to PACS (optional - leave blank to disable C-STORE)
+- **C-ECHO AET**: Used for connection testing
+- **C-MOVE Routing**: Configurable routing table for C-MOVE operations between PACS
+
+#### Configuration Setup
+
+1. **Set up PACS configuration with C-MOVE routing:**
+```bash
+python3 test-pacs/scripts/setup_pacs_config.py
+```
+
+2. **Or copy the sample configuration:**
 ```bash
 cp data/pacs_config.json.sample data/pacs_config.json
 ```
 
-Edit `data/pacs_config.json` with your PACS server information:
-
+3. **Edit `data/pacs_config.json` with your PACS server information:**
 ```json
 {
   "pacs-server-id": {
     "name": "Your PACS Server",
     "host": "pacs.example.com",
     "port": 104,
-    "aet": "DICOMFAB",
-    "aec": "PACS"
+    "aet_find": "DICOMFAB",
+    "aet_store": "DICOMFAB",
+    "aet_echo": "DICOMFAB",
+    "aec": "PACS",
+    "environment": "test",
+    "move_routing": {
+      "other-pacs-id": "MOVE_AE_TITLE"
+    }
   }
 }
+```
+
+4. **Configure C-MOVE routing:**
+   - Use the PACS management interface to configure C-MOVE routing tables
+   - Each PACS can have different AE titles for C-MOVE to other PACS
+   - Leave blank if C-MOVE is not supported to a particular destination
+
+#### Migration from Old Configuration
+If you have an existing configuration, run the migration script:
+```bash
+python3 scripts/migrate_pacs_config.py
 ```
 
 ### Patient Configuration
