@@ -1,4 +1,12 @@
-# DICOM Fabricator Usage Guide
+# Command Line Usage Guide
+
+This guide explains how to use DICOM Fabricator from the command line.
+
+## Related Documents
+- [Web Interface Guide](../user-guides/web-interface.md) - Graphical interface
+- [Installation Guide](../getting-started/installation.md) - Setup instructions
+- [First Steps](../getting-started/first-steps.md) - Getting started
+- [Glossary](../glossary.md) - Technical terms explained
 
 ## Quick Start
 

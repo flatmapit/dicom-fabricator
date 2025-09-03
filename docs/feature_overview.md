@@ -1,10 +1,12 @@
-# DICOM Fabricator - Feature Overview
+# Feature Overview
 
 This document provides a visual overview of the key features and common activities supported by DICOM Fabricator.
 
-## Quick Links
-- [Feature Permission Matrix](PERMISSIONS_TO_FEATURES.md) - Complete mapping of features to user roles and permissions
-- [Authentication Setup](AUTHENTICATION_SETUP.md) - Configuration guide for authentication and user management
+## Related Documents
+- [Quick Tour](../getting-started/quick-tour.md) - Overview of all features
+- [Web Interface Guide](../user-guides/web-interface.md) - Detailed interface usage
+- [Authentication Setup](../configuration/authentication.md) - User access configuration
+- [Feature Permission Matrix](PERMISSIONS_TO_FEATURES.md) - Complete mapping of features to user roles
 
 ## Main Dashboard
 
