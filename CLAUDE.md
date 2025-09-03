@@ -79,34 +79,53 @@ storescu -aet DICOMFAB -aec TESTPACS localhost 4242 dicom_output/*.dcm
 #### Web Application
 - **app.py** - Flask application with API endpoints and web routes
 - **templates/** - HTML templates with modal-based interface
-  - `base.html` - Base template with navigation (no viewer page link)
-  - `index.html` - Dashboard with stats and PACS status
+  - `base.html` - Base template with navigation and footer
+  - `index.html` - Dashboard redirect to query_pacs.html
+  - `login.html` - Authentication login page
   - `patients.html` - Patient management with live search and bulk operations
   - `generator.html` - Modal-based DICOM generation and study management interface
   - `pacs.html` - Comprehensive PACS management and querying interface
+  - `query_pacs.html` - Main PACS query interface (home page)
+  - `users.html` - User management interface (admin only)
+  - `viewer.html` - Legacy DICOM viewer page (deprecated)
 - **static/** - Frontend assets
   - `css/style.css` - Custom styling
   - `js/app.js` - JavaScript utilities and API wrapper
+  - `js/user-management.js` - User management functionality
 
 #### Core Modules
 - **src/** - Backend Python modules
+  - `auth.py` - Authentication and authorization with role-based access control
   - `dicom_fabricator.py` - Main DICOM generation logic, creates synthetic DICOM files with embedded text/shapes
+  - `enterprise_auth.py` - Enterprise authentication integration (AD/SAML)
+  - `group_mapper.py` - AD group to role mapping functionality
   - `patient_config.py` - Patient data models and registry management
   - `pacs_config.py` - PACS configuration management with CRUD operations and testing
   - `patient_manager.py` - CLI for managing patient database
   - `view_dicom.py` - DICOM viewer utility for reviewing generated files
 
 #### Configuration & Data
-- **docker/** - PACS server configuration
-  - `docker-compose.yml` - Orthanc PACS server setup
-  - `orthanc-config.json` - PACS server settings
+- **test-pacs/docker/** - Test PACS server configurations
+  - `docker-compose.yml` - Multi-PACS Orthanc setup
+  - `orthanc-config.json` - TESTPACS1 configuration
+  - `orthanc-config-2.json` - TESTPACS2 configuration
+  - `orthanc-prod-config.json` - PRODPACS1 configuration
+  - `orthanc-prod-config-2.json` - PRODPACS2 configuration
 - **config/** - Configuration files
   - `patient_config.json` - Patient configuration patterns and defaults
   - `requirements.txt` - Python dependencies
+  - `auth_config.json` - Authentication settings (created at runtime)
+  - `users.json` - User database (created at runtime)
+  - `group_mappings.json` - AD group mappings (optional)
 - **data/** - Runtime data
   - `patient_registry.json` - Persistent patient database
   - `pacs_config.json` - PACS configurations with connection test results
 - **dicom_output/** - Generated DICOM files (created at runtime)
+- **docs/** - Documentation
+  - `AUTHENTICATION_SETUP.md` - Auth configuration guide
+  - `PERMISSIONS_TO_FEATURES.md` - Feature-role mapping matrix
+  - `C-MOVE_TROUBLESHOOTING.md` - PACS operation debugging
+  - `feature_overview.md` - Visual feature guide
 
 ### Key Components
 
@@ -154,10 +173,21 @@ storescu -aet DICOMFAB -aec TESTPACS localhost 4242 dicom_output/*.dcm
 ### API Endpoints
 
 #### Web Pages
-- `GET /` - Home dashboard
+- `GET /` - Home dashboard (redirects to query_pacs.html)
+- `GET /login` - Authentication login page
+- `GET /logout` - Logout and session cleanup
 - `GET /patients` - Patient management page with live search and edit capabilities
 - `GET /generator` - DICOM generation page with modal-based interface
-- `GET /pacs` - PACS management and querying page
+- `GET /pacs` - PACS management and querying interface
+- `GET /query-pacs` - Main PACS query interface
+- `GET /users` - User management interface (admin only)
+
+#### Authentication & User Management
+- `POST /login` - Authenticate user with username/password
+- `GET /api/users` - List all users (admin only)
+- `POST /api/users` - Create new user (admin only)
+- `PUT /api/users/<username>` - Update user (admin only)
+- `DELETE /api/users/<username>` - Delete user (admin only)
 
 #### Patient Management
 - `GET /api/patients` - List all patients
