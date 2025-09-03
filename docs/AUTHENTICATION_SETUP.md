@@ -2,6 +2,10 @@
 
 This guide explains how to configure and test the authentication system in DICOM Fabricator.
 
+## Quick Links
+- [Feature Permission Matrix](PERMISSIONS_TO_FEATURES.md) - Complete mapping of features to user roles
+- [Feature Overview](feature_overview.md) - Detailed description of all features
+
 ## Overview
 
 The authentication system supports multiple modes:
@@ -75,6 +79,17 @@ Maps enterprise groups to application permissions:
   }
 }
 ```
+
+## User Roles and Permissions
+
+The system uses a role-based access control (RBAC) model. For a complete mapping of features to roles, see the [Feature Permission Matrix](PERMISSIONS_TO_FEATURES.md).
+
+### Available Roles
+- **admin**: Full system access including user management and PACS administration
+- **test_write**: Test environment write access (can query, C-STORE and C-MOVE to test PACS)
+- **test_read**: Test environment read-only access (can view and query test PACS)
+- **prod_write**: Production environment write access (can query, C-STORE and C-MOVE to production PACS)
+- **prod_read**: Production environment read-only access (can view and query production PACS)
 
 ## Environment-Specific Permissions
 

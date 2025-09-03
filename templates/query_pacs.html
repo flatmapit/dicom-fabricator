@@ -465,20 +465,36 @@ function filterPacsByEnvironment() {
     filteredConfigs.forEach(config => {
         const option = document.createElement('option');
         option.value = config.id;
-        option.textContent = `${config.name} (${config.host}:${config.port})`;
+        
+        // Check if PACS is down
+        const isDown = config.test_status === 'failed';
+        
+        if (isDown) {
+            // Show down PACS in red and disable selection
+            option.textContent = `${config.name} (${config.host}:${config.port}) - DOWN`;
+            option.style.color = '#dc3545'; // Red
+            option.style.fontWeight = 'bold';
+            option.disabled = true;
+            option.dataset.status = 'down';
+        } else {
+            // Normal PACS with environment color coding
+            option.textContent = `${config.name} (${config.host}:${config.port})`;
+            option.dataset.status = 'up';
+            
+            // Apply color coding based on environment
+            if (config.environment === 'prod') {
+                option.style.color = '#6f42c1'; // Dark purple
+                option.style.fontWeight = 'bold';
+            } else if (config.environment === 'test') {
+                option.style.color = '#198754'; // Dark green
+                option.style.fontWeight = 'bold';
+            }
+        }
+        
         option.dataset.pacsName = config.name;
         option.dataset.pacsHost = config.host;
         option.dataset.pacsPort = config.port;
         option.dataset.environment = config.environment;
-        
-        // Apply color coding based on environment
-        if (config.environment === 'production') {
-            option.style.color = '#6f42c1'; // Dark purple
-            option.style.fontWeight = 'bold';
-        } else if (config.environment === 'test') {
-            option.style.color = '#198754'; // Dark green
-            option.style.fontWeight = 'bold';
-        }
         
         // Prefer remembered selection over default
         if (rememberedPacs && config.id === rememberedPacs) {
@@ -1236,6 +1252,10 @@ function showCMoveDialog() {
         return;
     }
     
+    // Get source PACS name for the title
+    const sourcePacsName = document.getElementById('queryPacsSelect').selectedOptions[0]?.textContent || 'Unknown PACS';
+    document.getElementById('cMoveModalLabel').innerHTML = `<i class="fas fa-exchange-alt"></i> C-MOVE Study from ${sourcePacsName}`;
+    
     // Initialize C-MOVE environment filter
     initializeCMoveEnvironmentFilter();
     
@@ -1322,38 +1342,65 @@ function filterCMovePacsByEnvironment() {
         return;
     }
     
-    // Get current source PACS ID to exclude it
+    // Get current source PACS ID to exclude it and get its routing config
     const sourcePacsId = document.getElementById('queryPacsSelect').value;
+    const sourcePacsConfig = window.cMovePacsConfigs.find(c => c.id === sourcePacsId);
     
-    // Filter configs by environment and exclude source PACS
+    // Filter configs by environment, exclude source PACS, and only include those with routing configured
     const filteredConfigs = window.cMovePacsConfigs.filter(config => {
         if (config.id === sourcePacsId) return false; // Exclude source PACS
+        
+        // Only include PACS that have C-MOVE routing configured from the source PACS
+        if (!sourcePacsConfig || !sourcePacsConfig.move_routing || !sourcePacsConfig.move_routing[config.id]) {
+            return false;
+        }
+        
+        // Check environment filter
         if (selectedEnv === 'both') return true;
         return config.environment === selectedEnv;
     });
     
     if (filteredConfigs.length === 0) {
-        select.innerHTML = `<option value="">No ${selectedEnv} PACS configurations available (excluding source)</option>`;
+        select.innerHTML = `<option value="">No ${selectedEnv} PACS configurations available with C-MOVE routing configured</option>`;
         return;
     }
     
     filteredConfigs.forEach(config => {
         const option = document.createElement('option');
         option.value = config.id;
-        option.textContent = `${config.name} (${config.host}:${config.port})`;
+        
+        // Get the configured AE for routing to this destination
+        const configuredAE = sourcePacsConfig.move_routing[config.id];
+        
+        // Check if PACS is down
+        const isDown = config.test_status === 'failed';
+        
+        if (isDown) {
+            // Show down PACS in red and disable selection
+            option.textContent = `${config.name} (${config.host}:${config.port}) [${configuredAE}] - DOWN`;
+            option.style.color = '#dc3545'; // Red
+            option.style.fontWeight = 'bold';
+            option.disabled = true;
+            option.dataset.status = 'down';
+        } else {
+            // Normal PACS with environment color coding and configured AE
+            option.textContent = `${config.name} (${config.host}:${config.port}) [${configuredAE}]`;
+            option.dataset.status = 'up';
+            
+            // Apply color coding based on environment
+            if (config.environment === 'prod') {
+                option.style.color = '#6f42c1'; // Dark purple
+                option.style.fontWeight = 'bold';
+            } else if (config.environment === 'test') {
+                option.style.color = '#198754'; // Dark green
+                option.style.fontWeight = 'bold';
+            }
+        }
+        
         option.dataset.pacsName = config.name;
         option.dataset.pacsHost = config.host;
         option.dataset.pacsPort = config.port;
         option.dataset.environment = config.environment;
-        
-        // Apply color coding based on environment
-        if (config.environment === 'production') {
-            option.style.color = '#6f42c1'; // Dark purple
-            option.style.fontWeight = 'bold';
-        } else if (config.environment === 'test') {
-            option.style.color = '#198754'; // Dark green
-            option.style.fontWeight = 'bold';
-        }
         
         select.appendChild(option);
     });

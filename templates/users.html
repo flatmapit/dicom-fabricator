@@ -172,111 +172,20 @@
                         
                         <div class="mb-3">
                             <label for="role" class="form-label">Role *</label>
-                            <select class="form-select" id="role" name="role" required onchange="updatePermissionsByRole()">
+                            <select class="form-select" id="role" name="role" required onchange="updateRoleDescription()">
                                 <option value="">Select Role</option>
-                                <option value="admin">Admin</option>
-                                <option value="operator">Operator</option>
-                                <option value="viewer">Viewer</option>
-                                <option value="pacs_admin">PACS Admin</option>
-                                <option value="patient_manager">Patient Manager</option>
-                                <option value="test_user">Test User</option>
-                                <option value="test_viewer">Test Viewer</option>
-                                <option value="prod_user">Production User</option>
-                                <option value="prod_viewer">Production Viewer</option>
-                                <option value="user">Custom User</option>
+                                <option value="admin">Admin - Full system access</option>
+                                <option value="test_write">Test Write - Test environment write access</option>
+                                <option value="test_read">Test Read - Test environment read access</option>
+                                <option value="prod_write">Prod Write - Production environment write access</option>
+                                <option value="prod_read">Prod Read - Production environment read access</option>
                             </select>
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label">Permissions</label>
-                            <div class="permissions-section">
-                                <div class="permission-group">
-                                    <h6>System Permissions</h6>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="system_admin" name="permissions" value="system_admin">
-                                        <label class="form-check-label" for="system_admin">System Administrator</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="system_config" name="permissions" value="system_config">
-                                        <label class="form-check-label" for="system_config">System Configuration</label>
-                                    </div>
-                                </div>
-                                
-                                <div class="permission-group">
-                                    <h6>DICOM Permissions</h6>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="dicom_generate" name="permissions" value="dicom_generate">
-                                        <label class="form-check-label" for="dicom_generate">Generate DICOM</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="dicom_view" name="permissions" value="dicom_view">
-                                        <label class="form-check-label" for="dicom_view">View DICOM</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="dicom_export" name="permissions" value="dicom_export">
-                                        <label class="form-check-label" for="dicom_export">Export DICOM</label>
-                                    </div>
-                                </div>
-                                
-                                <div class="permission-group">
-                                    <h6>PACS Test Environment</h6>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="pacs_query_test" name="permissions" value="pacs_query_test">
-                                        <label class="form-check-label" for="pacs_query_test">Query Test PACS</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="pacs_move_test" name="permissions" value="pacs_move_test">
-                                        <label class="form-check-label" for="pacs_move_test">Move Test PACS</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="pacs_configure_test" name="permissions" value="pacs_configure_test">
-                                        <label class="form-check-label" for="pacs_configure_test">Configure Test PACS</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="pacs_test_test" name="permissions" value="pacs_test_test">
-                                        <label class="form-check-label" for="pacs_test_test">Test Test PACS</label>
-                                    </div>
-                                </div>
-                                
-                                <div class="permission-group">
-                                    <h6>PACS Production Environment</h6>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="pacs_query_prod" name="permissions" value="pacs_query_prod">
-                                        <label class="form-check-label" for="pacs_query_prod">Query Production PACS</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="pacs_move_prod" name="permissions" value="pacs_move_prod">
-                                        <label class="form-check-label" for="pacs_move_prod">Move Production PACS</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="pacs_configure_prod" name="permissions" value="pacs_configure_prod">
-                                        <label class="form-check-label" for="pacs_configure_prod">Configure Production PACS</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="pacs_test_prod" name="permissions" value="pacs_test_prod">
-                                        <label class="form-check-label" for="pacs_test_prod">Test Production PACS</label>
-                                    </div>
-                                </div>
-                                
-                                <div class="permission-group">
-                                    <h6>Patient Management</h6>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="patients_view" name="permissions" value="patients_view">
-                                        <label class="form-check-label" for="patients_view">View Patients</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="patients_create" name="permissions" value="patients_create">
-                                        <label class="form-check-label" for="patients_create">Create Patients</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="patients_edit" name="permissions" value="patients_edit">
-                                        <label class="form-check-label" for="patients_edit">Edit Patients</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="patients_delete" name="permissions" value="patients_delete">
-                                        <label class="form-check-label" for="patients_delete">Delete Patients</label>
-                                    </div>
-                                </div>
+                            <label class="form-label">Role Description</label>
+                            <div id="roleDescription" class="alert alert-info">
+                                Select a role to see its capabilities.
                             </div>
                         </div>
                     </form>

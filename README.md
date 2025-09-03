@@ -11,15 +11,53 @@ Note: This tool works in test, but exercise caution with live/prod PACS and test
 
 ## Features
 
-- **Authentication & Authorization**: Local authentication, Active Directory, and SAML 2.0 support with role-based access control
-- **Environment-Specific Permissions**: Separate permissions for test and production PACS operations
-- **User Management**: Complete user administration interface with granular permission control
+- **Authentication & Authorization**: Local authentication, Active Directory, and SAML 2.0 support with simplified role-based access control
+- **Environment-Specific Roles**: Separate roles for test and production PACS operations with clear capability boundaries
+- **User Management**: Complete user administration interface with role-based permissions
 - **HL7 ORM Integration**: Parse HL7 ORM messages and generate corresponding DICOM studies
 - **DICOM Generation**: Create synthetic DICOM files with realistic metadata
 - **Multi-PACS Integration**: Send studies to PACS servers, query studies on one or more PACS, and perform C-MOVE operations
 - **Patient Management**: Comprehensive patient registry with synthetic data generation
 - **Web Interface**: Modern Flask-based web application with Bootstrap UI
 - **Docker Support**: Easy deployment with Docker Compose for example test PACS servers
+
+## Role-Based Access Control
+
+DICOM Fabricator uses a simplified role-based permission system with the following roles:
+
+### Available Roles
+
+- **`admin`**: Full system access - can do anything including user management, PACS configuration, and all DICOM operations in both test and production environments
+- **`test_write`**: Test environment write access - can query, C-STORE and C-MOVE to test PACS, generate DICOM, and manage users
+- **`test_read`**: Test environment read access - can view status and query test PACS, generate DICOM, and manage users
+- **`prod_write`**: Production environment write access - can query, C-STORE and C-MOVE to production PACS, generate DICOM, and manage users
+- **`prod_read`**: Production environment read access - can view status and query production PACS, generate DICOM, and manage users
+
+### Enterprise Integration
+
+For Active Directory and SAML integration, use the following group naming convention with the `DF-` prefix:
+
+- `DF-Admin` → `admin` role
+- `DF-TestWrite` → `test_write` role
+- `DF-TestRead` → `test_read` role
+- `DF-ProdWrite` → `prod_write` role
+- `DF-ProdRead` → `prod_read` role
+
+The `DF-` prefix ensures namespace isolation and prevents accidental permission grants from similar group names in enterprise environments.
+
+### Migration from Permission-Based System
+
+If you're upgrading from a previous version that used individual permissions, run the migration script:
+
+```bash
+python3 scripts/migrate_users_to_roles.py
+```
+
+This script will:
+- Create a backup of your existing users file
+- Convert user permissions to appropriate roles
+- Remove the old permissions field
+- Preserve all other user data
 
 ## Architecture
 
@@ -122,16 +160,34 @@ sudo apt-get install dcmtk
 #### Windows
 Download from [DCMTK website](https://dcmtk.org/en/dcmtk/dcmtk-downloads/)
 
-### 5. Start PACS Servers (Optional)
+### 5. Start Test PACS Servers (Optional)
 
+#### Automated Setup (Recommended)
 ```bash
-cd docker
-docker-compose up -d
+# Start test PACS environment
+cd test-pacs
+./setup.sh
+
+# Or start with troubleshooting tools
+./setup.sh troubleshoot
 ```
 
-This will start two Orthanc PACS servers:
-- **Orthanc Test PACS**: localhost:4242 (DICOM), localhost:8042 (HTTP)
-- **Orthanc Test PACS 2**: localhost:4243 (DICOM), localhost:8043 (HTTP)
+This will start 2 test Orthanc PACS servers with full C-MOVE routing:
+- **Test PACS 1**: localhost:4242 (DICOM), localhost:8042 (HTTP)
+- **Test PACS 2**: localhost:4243 (DICOM), localhost:8043 (HTTP)
+
+#### Available Options
+- `./setup.sh basic` - Start basic test PACS (default)
+- `./setup.sh troubleshoot` - Start PACS with troubleshooting container
+- `./setup.sh enhanced` - Start enhanced PACS with DICOM tools
+- `./setup.sh stop` - Stop all test PACS containers
+- `./setup.sh clean` - Stop and remove all containers and data
+
+#### Legacy Setup (Alternative)
+```bash
+# Start all PACS servers (test and production)
+./start_pacs.sh
+```
 
 ### 6. Run the Application
 
@@ -232,12 +288,17 @@ The DICOM Fabricator uses an enhanced PACS configuration model with separate App
 
 #### Configuration Setup
 
-1. **Copy the sample configuration:**
+1. **Set up PACS configuration with C-MOVE routing:**
+```bash
+python3 test-pacs/scripts/setup_pacs_config.py
+```
+
+2. **Or copy the sample configuration:**
 ```bash
 cp data/pacs_config.json.sample data/pacs_config.json
 ```
 
-2. **Edit `data/pacs_config.json` with your PACS server information:**
+3. **Edit `data/pacs_config.json` with your PACS server information:**
 ```json
 {
   "pacs-server-id": {
@@ -256,7 +317,7 @@ cp data/pacs_config.json.sample data/pacs_config.json
 }
 ```
 
-3. **Configure C-MOVE routing:**
+4. **Configure C-MOVE routing:**
    - Use the PACS management interface to configure C-MOVE routing tables
    - Each PACS can have different AE titles for C-MOVE to other PACS
    - Leave blank if C-MOVE is not supported to a particular destination

@@ -15,7 +15,6 @@ class GroupMapping:
     """Group mapping configuration"""
     enterprise_group: str
     application_role: str
-    permissions: List[str]
     is_active: bool = True
     description: str = ""
 
@@ -25,8 +24,8 @@ class GroupMapper:
     def __init__(self, config_file: str = 'config/group_mappings.json'):
         self.config_file = config_file
         self.mappings: Dict[str, GroupMapping] = {}
-        self.default_role: str = 'user'
-        self.default_permissions: List[str] = ['dicom_view', 'pacs_query_test']
+        self.default_role: str = 'test_read'
+        self.require_df_prefix: bool = True
         
         self.load_mappings()
         self._create_default_mappings()
@@ -36,80 +35,29 @@ class GroupMapper:
         if not self.mappings:
             default_mappings = [
                 GroupMapping(
-                    enterprise_group="DICOM_Administrators",
+                    enterprise_group="DF-Admin",
                     application_role="admin",
-                    permissions=["system_admin"],
                     description="Full system administration access"
                 ),
                 GroupMapping(
-                    enterprise_group="DICOM_Operators",
-                    application_role="operator",
-                    permissions=[
-                        "dicom_generate", "dicom_view", "dicom_export",
-                        "pacs_query_test", "pacs_move_test", "pacs_configure_test", "pacs_test_test",
-                        "pacs_query_prod", "pacs_move_prod", "pacs_configure_prod", "pacs_test_prod",
-                        "patients_view", "patients_create", "patients_edit"
-                    ],
-                    description="Full operational access to DICOM features in all environments"
+                    enterprise_group="DF-TestWrite",
+                    application_role="test_write",
+                    description="Test environment write access - can query, C-STORE and C-MOVE to test PACS"
                 ),
                 GroupMapping(
-                    enterprise_group="DICOM_Viewers",
-                    application_role="viewer",
-                    permissions=[
-                        "dicom_view", "pacs_query_test", "pacs_query_prod", "patients_view"
-                    ],
-                    description="Read-only access to DICOM data in all environments"
+                    enterprise_group="DF-TestRead",
+                    application_role="test_read",
+                    description="Test environment read access - can view status and query test PACS"
                 ),
                 GroupMapping(
-                    enterprise_group="PACS_Administrators",
-                    application_role="pacs_admin",
-                    permissions=[
-                        "pacs_query_test", "pacs_move_test", "pacs_configure_test", "pacs_test_test",
-                        "pacs_query_prod", "pacs_move_prod", "pacs_configure_prod", "pacs_test_prod",
-                        "system_config"
-                    ],
-                    description="PACS management and configuration access in all environments"
+                    enterprise_group="DF-ProdWrite",
+                    application_role="prod_write",
+                    description="Production environment write access - can query, C-STORE and C-MOVE to production PACS"
                 ),
                 GroupMapping(
-                    enterprise_group="Patient_Managers",
-                    application_role="patient_manager",
-                    permissions=[
-                        "patients_view", "patients_create", "patients_edit", "patients_delete",
-                        "dicom_view"
-                    ],
-                    description="Patient registry management access"
-                ),
-                GroupMapping(
-                    enterprise_group="Test_Environment_Users",
-                    application_role="test_user",
-                    permissions=[
-                        "dicom_view", "pacs_query_test", "pacs_move_test", "patients_view"
-                    ],
-                    description="Test environment access only - read and write"
-                ),
-                GroupMapping(
-                    enterprise_group="Test_Environment_Viewers",
-                    application_role="test_viewer",
-                    permissions=[
-                        "dicom_view", "pacs_query_test", "patients_view"
-                    ],
-                    description="Test environment read-only access"
-                ),
-                GroupMapping(
-                    enterprise_group="Production_Environment_Users",
-                    application_role="prod_user",
-                    permissions=[
-                        "dicom_view", "pacs_query_prod", "pacs_move_prod", "patients_view"
-                    ],
-                    description="Production environment access only - read and write"
-                ),
-                GroupMapping(
-                    enterprise_group="Production_Environment_Viewers",
-                    application_role="prod_viewer",
-                    permissions=[
-                        "dicom_view", "pacs_query_prod", "patients_view"
-                    ],
-                    description="Production environment read-only access"
+                    enterprise_group="DF-ProdRead",
+                    application_role="prod_read",
+                    description="Production environment read access - can view status and query production PACS"
                 )
             ]
             
@@ -118,48 +66,63 @@ class GroupMapper:
             
             self.save_mappings()
     
-    def map_groups_to_permissions(self, groups: List[str]) -> Dict[str, any]:
-        """Map enterprise groups to application permissions and role"""
-        all_permissions: Set[str] = set()
-        highest_role = self.default_role
+    def map_groups_to_role(self, groups: List[str]) -> str:
+        """Map enterprise groups to application role with DF- prefix support"""
+        # Filter for DF- prefixed groups if required
+        if self.require_df_prefix:
+            df_groups = [group for group in groups if group.startswith('DF-')]
+            if not df_groups:
+                return self.default_role
+            groups = df_groups
+        
+        # Role priority (highest to lowest)
+        role_priority = {
+            'admin': 5,
+            'prod_write': 4,
+            'prod_read': 3,
+            'test_write': 2,
+            'test_read': 1
+        }
+        
+        highest_priority = 0
+        assigned_role = self.default_role
         
         for group in groups:
             mapping = self.mappings.get(group)
             if mapping and mapping.is_active:
-                # Add permissions
-                all_permissions.update(mapping.permissions)
+                role = mapping.application_role
+                priority = role_priority.get(role, 0)
                 
-                # Determine highest role (admin > operator > pacs_admin > patient_manager > viewer > user)
-                role_priority = {
-                    'admin': 6,
-                    'operator': 5,
-                    'pacs_admin': 4,
-                    'patient_manager': 3,
-                    'test_user': 2,
-                    'prod_user': 2,
-                    'test_viewer': 1,
-                    'prod_viewer': 1,
-                    'viewer': 1,
-                    'user': 1
-                }
-                
-                current_priority = role_priority.get(mapping.application_role, 1)
-                highest_priority = role_priority.get(highest_role, 1)
-                
-                if current_priority > highest_priority:
-                    highest_role = mapping.application_role
+                if priority > highest_priority:
+                    highest_priority = priority
+                    assigned_role = role
         
-        # Add default permissions if no specific permissions found
-        if not all_permissions:
-            all_permissions.update(self.default_permissions)
+        return assigned_role
+    
+    def map_groups_to_permissions(self, groups: List[str]) -> Dict[str, any]:
+        """Map enterprise groups to application permissions and role (legacy support)"""
+        role = self.map_groups_to_role(groups)
+        
+        # Convert role to legacy permissions format for backward compatibility
+        from src.auth import RoleManager
+        capabilities = RoleManager.get_role_capabilities(role)
+        
+        # Map capabilities back to legacy permissions
+        legacy_permissions = []
+        for capability, has_access in capabilities.items():
+            if has_access:
+                # Find legacy permissions that map to this capability
+                for perm, cap in RoleManager.PERMISSION_TO_CAPABILITY.items():
+                    if cap == capability and perm not in legacy_permissions:
+                        legacy_permissions.append(perm)
         
         return {
-            'role': highest_role,
-            'permissions': list(all_permissions)
+            'role': role,
+            'permissions': legacy_permissions
         }
     
     def add_mapping(self, enterprise_group: str, application_role: str, 
-                   permissions: List[str], description: str = "") -> bool:
+                   description: str = "") -> bool:
         """Add a new group mapping"""
         if enterprise_group in self.mappings:
             return False
@@ -167,7 +130,6 @@ class GroupMapper:
         mapping = GroupMapping(
             enterprise_group=enterprise_group,
             application_role=application_role,
-            permissions=permissions,
             description=description
         )
         

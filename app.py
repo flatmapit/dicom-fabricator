@@ -12,7 +12,7 @@ import json
 import base64
 import csv
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import threading
 import time
@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from dicom_fabricator import DICOMFabricator
 from patient_config import PatientRegistry, PatientRecord
 from src.pacs_config import PacsConfigManager
-from auth import auth_manager, login_required, permission_required, any_permission_required, get_current_user, login_user, logout_user, is_authenticated
+from auth import auth_manager, login_required, permission_required, any_permission_required, get_current_user, login_user, logout_user, is_authenticated, User, RoleManager
 from enterprise_auth import get_enterprise_auth_manager
 from group_mapper import get_group_mapper
 import pydicom
@@ -74,6 +74,34 @@ def update_user_activity():
 def is_user_active():
     """Check if user has been active in the last 10 minutes"""
     return (time.time() - last_user_activity) < user_activity_check_interval
+
+def require_admin():
+    """Check if current user has admin role"""
+    user = get_current_user()
+    if not user or user.role != 'admin':
+        return False
+    return True
+
+def require_environment_access(environment: str, access_type: str = 'read'):
+    """Check if current user has access to environment (test/prod) with specified access type (read/write)"""
+    user = get_current_user()
+    if not user:
+        return False
+    
+    from src.auth import RoleManager
+    
+    if access_type == 'write':
+        if environment == 'test':
+            return RoleManager.has_capability(user.role, 'test_write')
+        elif environment == 'prod':
+            return RoleManager.has_capability(user.role, 'prod_write')
+    else:  # read access
+        if environment == 'test':
+            return RoleManager.has_capability(user.role, 'test_query')
+        elif environment == 'prod':
+            return RoleManager.has_capability(user.role, 'prod_query')
+    
+    return False
 
 def auto_test_pacs_connections():
     """Automatically test all PACS connections based on user activity"""
@@ -170,10 +198,14 @@ def query_pacs_page():
 
 @app.route('/users')
 @login_required
-@permission_required('system_admin')
 def users_page():
     # Update user activity
     update_user_activity()
+    
+    # Check admin access
+    if not require_admin():
+        flash('Admin access required to view user management', 'error')
+        return redirect(url_for('index'))
     return render_template('users.html',
                          auth_enabled=auth_manager.is_auth_enabled(),
                          current_user=get_current_user())
@@ -305,22 +337,22 @@ def auth_status():
         'enterprise_auth_enabled': auth_manager.is_enterprise_auth_enabled(),
         'current_user': get_current_user().username if get_current_user() else None,
         'user_role': get_current_user().role if get_current_user() else None,
-        'user_permissions': get_current_user().permissions if get_current_user() else []
+        'user_capabilities': RoleManager.get_role_capabilities(get_current_user().role) if get_current_user() else {}
     })
 
 # User Management API Endpoints
 @app.route('/api/users', methods=['GET'])
 @login_required
-@permission_required('system_admin')
 def get_users():
-    """Get all users"""
+    """Get all users - admin only"""
+    if not require_admin():
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
     users = []
     for username, user in auth_manager.users.items():
         users.append({
             'username': user.username,
             'email': user.email,
             'role': user.role,
-            'permissions': user.permissions,
             'created_at': getattr(user, 'created_at', None),
             'last_login': getattr(user, 'last_login', None)
         })
@@ -328,47 +360,41 @@ def get_users():
 
 @app.route('/api/users', methods=['POST'])
 @login_required
-@permission_required('system_admin')
 def create_user():
-    """Create a new user"""
+    """Create a new user - admin only"""
+    if not require_admin():
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
     data = request.json
     
     username = data.get('username')
     email = data.get('email', '')
     password = data.get('password')
-    role = data.get('role')
-    permissions = data.get('permissions', [])
+    role = data.get('role', 'test_read')  # Default role
     
-    if not username or not password or not role:
-        return jsonify({'success': False, 'message': 'Username, password, and role are required'}), 400
+    if not username or not password:
+        return jsonify({'success': False, 'message': 'Username and password are required'}), 400
     
     if username in auth_manager.users:
         return jsonify({'success': False, 'message': 'Username already exists'}), 400
     
-    # Create new user
-    from src.auth import User
-    new_user = User(
-        username=username,
-        password_hash='',  # Will be set by set_password
-        email=email,
-        role=role,
-        permissions=permissions
-    )
+    # Validate role
+    from src.auth import RoleManager
+    if role not in RoleManager.get_available_roles():
+        return jsonify({'success': False, 'message': f'Invalid role: {role}'}), 400
     
-    # Set password
-    new_user.set_password(password)
-    
-    # Add to auth manager
-    auth_manager.users[username] = new_user
-    auth_manager.save_users()
+    # Create new user using auth_manager method
+    success = auth_manager.create_user(username, password, email, role)
+    if not success:
+        return jsonify({'success': False, 'message': 'Failed to create user'}), 500
     
     return jsonify({'success': True, 'message': f'User {username} created successfully'})
 
 @app.route('/api/users/<username>', methods=['PUT'])
 @login_required
-@permission_required('system_admin')
 def update_user(username):
-    """Update an existing user"""
+    """Update an existing user - admin only"""
+    if not require_admin():
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
     data = request.json
     
     if username not in auth_manager.users:
@@ -380,9 +406,11 @@ def update_user(username):
     if 'email' in data:
         user.email = data['email']
     if 'role' in data:
+        # Validate role
+        from src.auth import RoleManager
+        if data['role'] not in RoleManager.get_available_roles():
+            return jsonify({'success': False, 'message': f'Invalid role: {data["role"]}'}), 400
         user.role = data['role']
-    if 'permissions' in data:
-        user.permissions = data['permissions']
     
     # Update password if provided
     if data.get('password'):
@@ -395,9 +423,10 @@ def update_user(username):
 
 @app.route('/api/users/<username>', methods=['DELETE'])
 @login_required
-@permission_required('system_admin')
 def delete_user(username):
-    """Delete a user"""
+    """Delete a user - admin only"""
+    if not require_admin():
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
     if username not in auth_manager.users:
         return jsonify({'success': False, 'message': 'User not found'}), 404
     
@@ -1422,7 +1451,7 @@ def pacs_status():
     try:
         # Try to connect to PACS using echoscu with default config
         result = subprocess.run(
-            ['echoscu', '-aet', default_config.aet, '-aec', default_config.aec, 
+            ['echoscu', '-aet', default_config.aet_echo, '-aec', default_config.aec, 
              default_config.host, str(default_config.port)],
             capture_output=True,
             timeout=5
@@ -1437,7 +1466,7 @@ def pacs_status():
                     'aet': default_config.aec,
                     'host': default_config.host,
                     'port': default_config.port,
-                    'our_aet': default_config.aet
+                    'our_aet': default_config.aet_echo
                 }
             })
         else:
@@ -1552,7 +1581,7 @@ def query_study_on_pacs():
         # Use findscu to query for the study
         cmd = [
             'findscu',
-            '-aet', pacs_config.aet,
+            '-aet', pacs_config.aet_find,
             '-aec', pacs_config.aec,
             pacs_config.host, str(pacs_config.port),
             '-S',  # Study level query
@@ -1645,6 +1674,7 @@ def query_study_on_pacs():
         }), 500
 
 @app.route('/api/pacs/send-study', methods=['POST'])
+@login_required
 def send_study_to_pacs():
     """Send an entire study (all series) to PACS"""
     import subprocess
@@ -1676,6 +1706,14 @@ def send_study_to_pacs():
                 'success': False,
                 'error': 'No PACS configuration available'
             }), 400
+    
+    # Check environment access for C-STORE operation
+    environment = getattr(pacs_config, 'environment', 'test')
+    if not require_environment_access(environment, 'write'):
+        return jsonify({
+            'success': False,
+            'error': f'Insufficient permissions for {environment} environment write access'
+        }), 403
     
     # Convert relative path to absolute if needed
     if not study_folder.startswith('/'):
@@ -1753,7 +1791,9 @@ def send_study_to_pacs():
                         'name': pacs_config.name,
                         'host': pacs_config.host,
                         'port': pacs_config.port,
-                        'aet': pacs_config.aet,
+                        'aet_find': pacs_config.aet_find,
+                        'aet_store': pacs_config.aet_store,
+                        'aet_echo': pacs_config.aet_echo,
                         'aec': pacs_config.aec
                     }
                 }
@@ -1776,7 +1816,9 @@ def send_study_to_pacs():
                         'name': pacs_config.name,
                         'host': pacs_config.host,
                         'port': pacs_config.port,
-                        'aet': pacs_config.aet,
+                        'aet_find': pacs_config.aet_find,
+                        'aet_store': pacs_config.aet_store,
+                        'aet_echo': pacs_config.aet_echo,
                         'aec': pacs_config.aec
                     }
                 }
@@ -1834,8 +1876,12 @@ def list_pacs_configs():
         }), 500
 
 @app.route('/api/pacs/configs', methods=['POST'])
+@login_required
 def create_pacs_config():
     """Create a new PACS configuration"""
+    if not require_admin():
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
+    
     try:
         data = request.json
         
@@ -1914,7 +1960,9 @@ def get_pacs_config(config_id):
                 'description': config.description,
                 'host': config.host,
                 'port': config.port,
-                'aet': config.aet,
+                'aet_find': config.aet_find,
+                'aet_store': config.aet_store,
+                'aet_echo': config.aet_echo,
                 'aec': config.aec,
                 'environment': config.environment,
                 'is_default': config.is_default,
@@ -1923,7 +1971,8 @@ def get_pacs_config(config_id):
                 'modified_date': config.modified_date,
                 'last_tested': config.last_tested,
                 'test_status': config.test_status,
-                'test_message': config.test_message
+                'test_message': config.test_message,
+                'move_routing': config.move_routing
             }
         })
     except Exception as e:
@@ -1933,8 +1982,12 @@ def get_pacs_config(config_id):
         }), 500
 
 @app.route('/api/pacs/configs/<config_id>', methods=['PUT'])
+@login_required
 def update_pacs_config(config_id):
     """Update a PACS configuration"""
+    if not require_admin():
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
+    
     try:
         data = request.json
         
@@ -1958,7 +2011,9 @@ def update_pacs_config(config_id):
                 'description': config.description,
                 'host': config.host,
                 'port': config.port,
-                'aet': config.aet,
+                'aet_find': config.aet_find,
+                'aet_store': config.aet_store,
+                'aet_echo': config.aet_echo,
                 'aec': config.aec,
                 'environment': config.environment,
                 'is_default': config.is_default,
@@ -1980,8 +2035,12 @@ def update_pacs_config(config_id):
         }), 500
 
 @app.route('/api/pacs/configs/<config_id>', methods=['DELETE'])
+@login_required
 def delete_pacs_config(config_id):
     """Delete a PACS configuration"""
+    if not require_admin():
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
+    
     try:
         success = pacs_manager.delete_config(config_id)
         if not success:
@@ -2059,10 +2118,11 @@ def get_store_enabled_pacs():
 
 @app.route('/api/pacs/configs/<config_id>/routing', methods=['PUT'])
 @login_required
-@permission_required('pacs_configure_test')
-@permission_required('pacs_configure_prod')
 def update_pacs_routing(config_id):
     """Update C-MOVE routing table for a PACS configuration"""
+    if not require_admin():
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
+    
     try:
         data = request.json
         routing_updates = data.get('routing_updates', {})
@@ -2140,7 +2200,7 @@ def query_series_details():
         # Build findscu command for series-level query
         cmd = [
             'findscu',
-            '-aet', pacs_config.aet,
+            '-aet', pacs_config.aet_find,
             '-aec', pacs_config.aec,
             pacs_config.host, str(pacs_config.port),
             '-S',  # Study Root Query/Retrieve Information Model
@@ -2421,6 +2481,14 @@ def query_pacs():
                 'error': 'No PACS configuration available'
             }), 400
     
+    # Check environment access for PACS query
+    environment = getattr(pacs_config, 'environment', 'test')
+    if not require_environment_access(environment, 'read'):
+        return jsonify({
+            'success': False,
+            'error': f'Insufficient permissions for {environment} environment read access'
+        }), 403
+    
     # Build query parameters
     search_params = []
     
@@ -2466,6 +2534,17 @@ def query_pacs():
         date_range = f"{start_date.strftime('%Y%m%d')}-{end_date.strftime('%Y%m%d')}"
         search_params.extend(['-k', f'StudyDate={date_range}'])
     
+    # Create query_params for REST API fallback
+    query_params = {
+        'patient_name': data.get('patient_name', ''),
+        'patient_id': data.get('patient_id', ''),
+        'accession_number': data.get('accession_number', ''),
+        'study_uid': data.get('study_uid', ''),
+        'series_uid': data.get('series_uid', ''),
+        'days_ago': days_ago,
+        'max_results': max_results
+    }
+    
     # If no search criteria provided, add a default wildcard search to ensure PACS returns results
     if not search_params:
         search_params.extend(['-k', 'PatientName=*'])
@@ -2507,7 +2586,7 @@ def query_pacs():
         # Build findscu command
         cmd = [
             'findscu',
-            '-aet', pacs_config.aet,
+            '-aet', pacs_config.aet_find,
             '-aec', pacs_config.aec,
             pacs_config.host, str(pacs_config.port),
         ]
@@ -3073,6 +3152,7 @@ def configure_orthanc_routing(source_pacs, destination_pacs):
         }
 
 @app.route('/api/pacs/c-move', methods=['POST'])
+@login_required
 def c_move_study():
     """Perform C-MOVE operation to transfer study between PACS servers"""
     import subprocess
@@ -3104,6 +3184,23 @@ def c_move_study():
             'success': False,
             'error': 'Destination PACS configuration not found'
         }), 404
+    
+    # Check environment access for C-MOVE operation
+    source_env = getattr(source_pacs, 'environment', 'test')
+    dest_env = getattr(destination_pacs, 'environment', 'test')
+    
+    # User needs write access to both environments
+    if not require_environment_access(source_env, 'write'):
+        return jsonify({
+            'success': False,
+            'error': f'Insufficient permissions for {source_env} environment write access'
+        }), 403
+    
+    if not require_environment_access(dest_env, 'write'):
+        return jsonify({
+            'success': False,
+            'error': f'Insufficient permissions for {dest_env} environment write access'
+        }), 403
     
     # Check if C-MOVE is supported from source to destination
     move_ae = pacs_manager.get_move_ae(source_pacs_id, destination_pacs_id)
@@ -3231,6 +3328,27 @@ def c_move_study():
         return jsonify({
             'success': False,
             'error': f'Error executing C-MOVE: {str(e)}'
+        }), 500
+
+@app.route('/api/pacs/reload-config', methods=['POST'])
+def reload_pacs_config():
+    """Reload PACS configuration from file"""
+    try:
+        success = pacs_manager.reload_configs()
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'PACS configuration reloaded successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to reload PACS configuration'
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error reloading PACS configuration: {str(e)}'
         }), 500
 
 @app.route('/api/parse-orm', methods=['POST'])

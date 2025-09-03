@@ -17,12 +17,11 @@ import jwt
 
 @dataclass
 class User:
-    """User data model"""
+    """User data model with simplified role-based permissions"""
     username: str
     password_hash: str
     email: str
-    role: str
-    permissions: List[str]
+    role: str  # 'admin', 'test_write', 'test_read', 'prod_write', 'prod_read'
     is_active: bool = True
     created_at: str = None
     last_login: str = None
@@ -48,9 +47,118 @@ class User:
         """Create user from dictionary"""
         return cls(**data)
 
+class RoleManager:
+    """Manages role-based permissions for DICOM Fabricator"""
+    
+    # Define role capabilities
+    ROLE_CAPABILITIES = {
+        'admin': {
+            'user_management': True,
+            'dicom_generation': True,
+            'pacs_view': True,
+            'test_query': True,
+            'test_write': True,
+            'prod_query': True,
+            'prod_write': True,
+            'pacs_admin': True
+        },
+        'test_write': {
+            'user_management': False,
+            'dicom_generation': True,
+            'pacs_view': True,
+            'test_query': True,
+            'test_write': True,
+            'prod_query': False,
+            'prod_write': False,
+            'pacs_admin': False
+        },
+        'test_read': {
+            'user_management': False,
+            'dicom_generation': True,
+            'pacs_view': True,
+            'test_query': True,
+            'test_write': False,
+            'prod_query': False,
+            'prod_write': False,
+            'pacs_admin': False
+        },
+        'prod_write': {
+            'user_management': False,
+            'dicom_generation': True,
+            'pacs_view': True,
+            'test_query': False,
+            'test_write': False,
+            'prod_query': True,
+            'prod_write': True,
+            'pacs_admin': False
+        },
+        'prod_read': {
+            'user_management': False,
+            'dicom_generation': True,
+            'pacs_view': True,
+            'test_query': False,
+            'test_write': False,
+            'prod_query': True,
+            'prod_write': False,
+            'pacs_admin': False
+        }
+    }
+    
+    # Legacy permission to role capability mapping
+    PERMISSION_TO_CAPABILITY = {
+        'user_manage': 'user_management',
+        'dicom_generate': 'dicom_generation',
+        'dicom_view': 'dicom_generation',
+        'pacs_query_test': 'test_query',
+        'pacs_move_test': 'test_write',
+        'pacs_store_test': 'test_write',
+        'pacs_configure_test': 'pacs_admin',
+        'pacs_query_prod': 'prod_query',
+        'pacs_move_prod': 'prod_write',
+        'pacs_store_prod': 'prod_write',
+        'pacs_configure_prod': 'pacs_admin'
+    }
+    
+    @classmethod
+    def has_capability(cls, role: str, capability: str) -> bool:
+        """Check if a role has a specific capability"""
+        if role not in cls.ROLE_CAPABILITIES:
+            return False
+        return cls.ROLE_CAPABILITIES[role].get(capability, False)
+    
+    @classmethod
+    def has_permission(cls, role: str, permission: str) -> bool:
+        """Check if a role has a specific permission (legacy support)"""
+        capability = cls.PERMISSION_TO_CAPABILITY.get(permission)
+        if not capability:
+            return False
+        return cls.has_capability(role, capability)
+    
+    @classmethod
+    def get_role_capabilities(cls, role: str) -> Dict[str, bool]:
+        """Get all capabilities for a role"""
+        return cls.ROLE_CAPABILITIES.get(role, {})
+    
+    @classmethod
+    def get_available_roles(cls) -> List[str]:
+        """Get list of available roles"""
+        return list(cls.ROLE_CAPABILITIES.keys())
+    
+    @classmethod
+    def get_role_description(cls, role: str) -> str:
+        """Get human-readable description of a role"""
+        descriptions = {
+            'admin': 'Full system access - can do anything',
+            'test_write': 'Test environment write access - can query, C-STORE and C-MOVE to test PACS',
+            'test_read': 'Test environment read access - can view status and query test PACS',
+            'prod_write': 'Production environment write access - can query, C-STORE and C-MOVE to production PACS',
+            'prod_read': 'Production environment read access - can view status and query production PACS'
+        }
+        return descriptions.get(role, 'Unknown role')
+
 @dataclass
 class Permission:
-    """Permission data model"""
+    """Permission data model (legacy support)"""
     name: str
     description: str
     category: str
@@ -129,8 +237,7 @@ class AuthManager:
             username='admin',
             password_hash='',  # Will be set by set_password
             email='admin@dicom-fabricator.local',
-            role='admin',
-            permissions=['system_admin']
+            role='admin'
         )
         admin_user.set_password(admin_password)
         self.users['admin'] = admin_user
@@ -206,24 +313,23 @@ class AuthManager:
             username='anonymous',
             password_hash='',
             email='anonymous@dicom-fabricator.local',
-            role='user',
-            permissions=self.default_user_permissions
+            role='test_read'  # Default role for anonymous users
         )
     
-    def create_user(self, username: str, password: str, email: str, role: str = 'user', permissions: List[str] = None) -> bool:
-        """Create a new user"""
+    def create_user(self, username: str, password: str, email: str, role: str = 'test_read') -> bool:
+        """Create a new user with role-based permissions"""
         if username in self.users:
             return False
         
-        if permissions is None:
-            permissions = []
+        # Validate role
+        if role not in RoleManager.get_available_roles():
+            role = 'test_read'  # Default role
         
         user = User(
             username=username,
             password_hash='',  # Will be set by set_password
             email=email,
-            role=role,
-            permissions=permissions
+            role=role
         )
         
         user.set_password(password)
@@ -244,8 +350,7 @@ class AuthManager:
             user.email = kwargs['email']
         if 'role' in kwargs:
             user.role = kwargs['role']
-        if 'permissions' in kwargs:
-            user.permissions = kwargs['permissions']
+        # Permissions are now handled by roles, so we ignore this field
         if 'is_active' in kwargs:
             user.is_active = kwargs['is_active']
         if 'password' in kwargs:
@@ -264,18 +369,15 @@ class AuthManager:
         return True
     
     def has_permission(self, user: User, permission: str) -> bool:
-        """Check if user has a specific permission"""
+        """Check if user has a specific permission (legacy support)"""
         if not self.auth_enabled:
             return True  # All permissions allowed when auth is disabled
         
         if not user or not user.is_active:
             return False
         
-        # Admin role has all permissions
-        if user.role == 'admin':
-            return True
-        
-        return permission in user.permissions
+        # Use role-based permission checking
+        return RoleManager.has_permission(user.role, permission)
     
     def has_any_permission(self, user: User, permissions: List[str]) -> bool:
         """Check if user has any of the specified permissions"""
@@ -477,7 +579,9 @@ def login_user(user: User):
     """Log in a user"""
     session['user_id'] = user.username
     session['user_role'] = user.role
-    session['user_permissions'] = user.permissions
+    # Store role capabilities instead of individual permissions
+    from src.auth import RoleManager
+    session['user_capabilities'] = RoleManager.get_role_capabilities(user.role)
 
 def logout_user():
     """Log out the current user"""
@@ -488,7 +592,6 @@ def generate_jwt_token(user: User, expires_in: int = 3600) -> str:
     payload = {
         'user_id': user.username,
         'role': user.role,
-        'permissions': user.permissions,
         'exp': datetime.utcnow() + timedelta(seconds=expires_in)
     }
     return jwt.encode(payload, auth_manager.secret_key, algorithm='HS256')

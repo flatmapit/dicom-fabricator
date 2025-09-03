@@ -85,4 +85,9 @@ secrets.yaml
 config/users.json
 config/auth_config.json
 cookies.txt
-*.cookies
+*.cookiestest-pacs/docker/orthanc-data*/
+test-pacs/docker/orthanc-data-2*/
+*.py
+*.txt
+cookies.txt
+testuser_cookies.txt

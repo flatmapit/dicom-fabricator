@@ -1,0 +1,14 @@
+# Enhanced Orthanc container with troubleshooting tools
+FROM jodogne/orthanc-plugins:latest
+
+# Install troubleshooting tools with retry and fix-missing
+RUN apt-get update && apt-get install -y --fix-missing \
+    iputils-ping \
+    netcat-openbsd \
+    curl \
+    wget \
+    dcmtk \
+    && rm -rf /var/lib/apt/lists/*
+
+# Keep the original entrypoint
+ENTRYPOINT ["Orthanc"]

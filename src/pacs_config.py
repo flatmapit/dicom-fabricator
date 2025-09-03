@@ -7,7 +7,7 @@ import json
 import uuid
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
 
 
@@ -31,14 +31,12 @@ class PacsConfiguration:
     last_tested: str = ""
     test_status: str = "unknown"  # unknown, success, failed
     test_message: str = ""
-    move_routing: Dict[str, str] = None  # Map of destination PACS ID -> AE for C-MOVE
+    move_routing: Dict[str, str] = field(default_factory=dict)  # Map of destination PACS ID -> AE for C-MOVE
     
     def __post_init__(self):
         if not self.created_date:
             self.created_date = datetime.now().isoformat()
         self.modified_date = datetime.now().isoformat()
-        if self.move_routing is None:
-            self.move_routing = {}
 
 
 class PacsConfigManager:
@@ -127,7 +125,11 @@ class PacsConfigManager:
                 with open(self.config_path, 'r') as f:
                     data = json.load(f)
                     for config_id, config_dict in data.items():
-                        self.configs[config_id] = PacsConfiguration(**config_dict)
+                        config = PacsConfiguration(**config_dict)
+                        # Fix any null move_routing fields
+                        if config.move_routing is None:
+                            config.move_routing = {}
+                        self.configs[config_id] = config
             except Exception as e:
                 print(f"Error loading PACS configs: {e}")
                 self.configs = {}
@@ -333,6 +335,7 @@ class PacsConfigManager:
         """Get PACS configuration statistics"""
         total = len(self.configs)
         active = len([c for c in self.configs.values() if c.test_status == "success"])
+        down = len([c for c in self.configs.values() if c.test_status == "failed"])
         tested = len([c for c in self.configs.values() if c.last_tested])
         successful = len([c for c in self.configs.values() if c.test_status == "success"])
         
@@ -362,6 +365,7 @@ class PacsConfigManager:
         return {
             "total_configs": total,
             "active_configs": active,
+            "down_configs": down,
             "tested_configs": tested,
             "successful_tests": successful,
             "default_config": self.get_default_config().name if self.get_default_config() else None,
@@ -385,6 +389,17 @@ class PacsConfigManager:
             return None
         
         return source_config.move_routing.get(destination_config_id, "")
+    
+    def reload_configs(self) -> bool:
+        """Reload configurations from the file"""
+        try:
+            self.configs.clear()
+            self.load_configs()
+            self._ensure_default_configs()
+            return True
+        except Exception as e:
+            print(f"Error reloading PACS configurations: {e}")
+            return False
     
     def update_routing_table(self, config_id: str, routing_updates: Dict[str, str]) -> bool:
         """Update the C-MOVE routing table for a PACS configuration"""

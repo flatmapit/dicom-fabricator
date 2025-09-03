@@ -5,9 +5,13 @@
 
 echo "Starting PACS servers for test and production environments..."
 
+# Set up PACS configuration with C-MOVE routing
+echo "Setting up PACS configuration with C-MOVE routing..."
+python3 test-pacs/scripts/setup_pacs_config.py
+
 # Start the main docker-compose (test PACS on port 4242)
 echo "Starting Test PACS servers..."
-cd docker && docker-compose up -d
+cd test-pacs/docker && docker-compose up -d
 
 # Start additional production PACS servers
 echo "Starting Production PACS servers..."
@@ -20,13 +24,7 @@ docker run -d --name testpacs-2 \
   -v testpacs-2-config:/etc/orthanc \
   jodogne/orthanc-plugins:1.12.1
 
-# Test PACS 3 on port 4244
-docker run -d --name testpacs-3 \
-  -p 8044:8042 \
-  -p 4244:4242 \
-  -v testpacs-3-db:/var/lib/orthanc/db \
-  -v testpacs-3-config:/etc/orthanc \
-  jodogne/orthanc-plugins:1.12.1
+
 
 # Prod PACS 1 on port 4245
 docker run -d --name prodpacs-1 \
@@ -54,9 +52,6 @@ echo "    DICOM:  localhost:4242"
 echo "  Test PACS 2:"
 echo "    Web UI: http://localhost:8043 (test/test123)"
 echo "    DICOM:  localhost:4243"
-echo "  Test PACS 3:"
-echo "    Web UI: http://localhost:8044 (test/test123)"
-echo "    DICOM:  localhost:4244"
 echo ""
 echo "PRODUCTION ENVIRONMENT:"
 echo "  Prod PACS 1:"

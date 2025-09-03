@@ -1073,14 +1073,14 @@ function filterStudyOpsPacsByEnvironment() {
         return;
     }
     
-    // Filter configs by environment
+    // Filter configs by environment - DICOM generator only allows test PACS
     const filteredConfigs = window.studyOpsPacsConfigs.filter(config => {
-        if (selectedEnv === 'both') return true;
-        return config.environment === selectedEnv;
+        // Only allow test environment PACS for DICOM generation
+        return config.environment === 'test';
     });
     
     if (filteredConfigs.length === 0) {
-        select.innerHTML = `<option value="">No ${selectedEnv} PACS configurations available</option>`;
+        select.innerHTML = '<option value="">No test PACS configurations available</option>';
         return;
     }
     
@@ -1090,20 +1090,39 @@ function filterStudyOpsPacsByEnvironment() {
     filteredConfigs.forEach(config => {
         const option = document.createElement('option');
         option.value = config.id;
-        option.textContent = `${config.name} (${config.host}:${config.port})`;
+        
+        // Check if PACS is down
+        const isDown = config.test_status === 'failed';
+        
+        // Get the C-STORE AE for this PACS
+        const cStoreAE = config.aet_store || '-';
+        
+        if (isDown) {
+            // Show down PACS in red and disable selection
+            option.textContent = `${config.name} (${config.host}:${config.port}) [${cStoreAE}] - DOWN`;
+            option.style.color = '#dc3545'; // Red
+            option.style.fontWeight = 'bold';
+            option.disabled = true;
+            option.dataset.status = 'down';
+        } else {
+            // Normal PACS with environment color coding and C-STORE AE
+            option.textContent = `${config.name} (${config.host}:${config.port}) [${cStoreAE}]`;
+            option.dataset.status = 'up';
+            
+            // Apply color coding based on environment
+            if (config.environment === 'prod') {
+                option.style.color = '#6f42c1'; // Dark purple
+                option.style.fontWeight = 'bold';
+            } else if (config.environment === 'test') {
+                option.style.color = '#198754'; // Dark green
+                option.style.fontWeight = 'bold';
+            }
+        }
+        
         option.dataset.pacsName = config.name;
         option.dataset.pacsHost = config.host;
         option.dataset.pacsPort = config.port;
         option.dataset.environment = config.environment;
-        
-        // Apply color coding based on environment
-        if (config.environment === 'production') {
-            option.style.color = '#6f42c1'; // Dark purple
-            option.style.fontWeight = 'bold';
-        } else if (config.environment === 'test') {
-            option.style.color = '#198754'; // Dark green
-            option.style.fontWeight = 'bold';
-        }
         
         // Restore previous selections if they exist in filtered configs
         if (previousSelections.includes(config.id)) {
@@ -1174,21 +1193,16 @@ function updateStudyOpsSelectedPacsHint() {
 function updateStudyOpsButtonStates() {
     const select = document.getElementById('pacsSelect');
     const sendBtn = document.getElementById('sendToPacsBtn');
-    const queryBtn = document.getElementById('queryPacsBtn');
     
     const selectedValues = Array.from(select.selectedOptions).map(option => option.value);
     const validSelectedValues = selectedValues.filter(value => value && value !== '');
     
     if (validSelectedValues.length > 0) {
         sendBtn.disabled = false;
-        queryBtn.disabled = false;
         sendBtn.innerHTML = `<i class="fas fa-paper-plane"></i> Send Study to PACS${validSelectedValues.length > 1 ? ` (${validSelectedValues.length} PACS)` : ''}`;
-        queryBtn.innerHTML = `<i class="fas fa-search"></i> Query Study on PACS${validSelectedValues.length > 1 ? ` (${validSelectedValues.length} PACS)` : ''}`;
     } else {
         sendBtn.disabled = true;
-        queryBtn.disabled = true;
         sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Study to PACS';
-        queryBtn.innerHTML = '<i class="fas fa-search"></i> Query Study on PACS';
     }
 }
 
@@ -1215,32 +1229,14 @@ function getSelectedPacsIds() {
 }
 
 
-async function queryStudyStatus(studyUID, pacsConfigId) {
-    try {
-        const response = await fetch('/api/pacs/query-study', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                study_uid: studyUID,
-                pacs_config_id: pacsConfigId
-            })
-        });
-        
-        const data = await response.json();
-        return data.success && data.exists;
-    } catch (error) {
-        console.error('Error querying study status:', error);
-        return false;
-    }
-}
+
 
 // PACS Dialog Functions
 function showPacsDialog(studyUID) {
     // Store the current study UID for use in dialog actions
     window.currentStudyUID = studyUID;
     
-    // Clear any previous query status note
-    document.getElementById('queryStatusNote').style.display = 'none';
+
     
     // Display the Study UID in the modal
     document.getElementById('studyUIDDisplay').textContent = studyUID;
@@ -1265,7 +1261,7 @@ function clearPacsLog() {
         <div class="text-center py-4">
             <i class="fas fa-terminal fa-2x mb-2 opacity-50"></i>
             <div>DICOM command output will appear here</div>
-            <small class="text-muted">Send or query to see command logs</small>
+            <small class="text-muted">Send to see command logs</small>
         </div>
     `;
 }
@@ -1461,123 +1457,8 @@ async function sendToPACS() {
 }
 
 
-async function queryPACS() {
-    const studyUID = window.currentStudyUID;
-    const selectedPacsIds = getSelectedPacsIds();
-    
-    if (!studyUID) {
-        showAlert('danger', 'No study selected');
-        return;
-    }
-    
-    if (selectedPacsIds.length === 0) {
-        showAlert('danger', 'Please select at least one PACS configuration');
-        return;
-    }
-    
-    // Show loading
-    const queryBtn = document.getElementById('queryPacsBtn');
-    const originalContent = queryBtn.innerHTML;
-    queryBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Querying...';
-    queryBtn.disabled = true;
-    
-    // Add log entry for query start
-    const selectedPacsName = getSelectedPacsName();
-    addPacsLogEntry('info', `Starting DICOM C-FIND query on ${selectedPacsName}`);
-    addPacsLogEntry('info', `Searching for Study UID: ${studyUID}`);
-    
-    try {
-        let foundCount = 0;
-        let notFoundCount = 0;
-        let errorCount = 0;
-        const foundPacs = [];
-        const notFoundPacs = [];
-        
-        // Query each selected PACS sequentially
-        for (let i = 0; i < selectedPacsIds.length; i++) {
-            const pacsId = selectedPacsIds[i];
-            const pacsName = document.querySelector(`#pacsSelect option[value="${pacsId}"]`)?.textContent || 'Unknown PACS';
-            
-            addPacsLogEntry('info', `C-FIND ${i + 1}/${selectedPacsIds.length}: Querying ${pacsName}`);
-            
-            try {
-                const response = await fetch('/api/pacs/query-study', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        study_uid: studyUID,
-                        pacs_config_id: pacsId
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    if (data.exists) {
-                        foundCount++;
-                        foundPacs.push(pacsName);
-                        const info = data.study_info;
-                        addPacsLogEntry('success', `C-FIND ${i + 1}/${selectedPacsIds.length}: Study found on ${pacsName}`);
-                        addPacsLogEntry('info', `Patient: ${info.patient_name || 'Unknown'}`);
-                        addPacsLogEntry('info', `Series: ${info.series_count || '0'}, Images: ${info.instance_count || '0'}`);
-                        
-                        // Add command output if available
-                        if (data.command_output) {
-                            addPacsCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
-                        }
-                    } else {
-                        notFoundCount++;
-                        notFoundPacs.push(pacsName);
-                        addPacsLogEntry('warning', `C-FIND ${i + 1}/${selectedPacsIds.length}: Study NOT found on ${pacsName}`);
-                        
-                        if (data.command_output) {
-                            addPacsCommandOutput(data.command_output.command, data.command_output.output, data.command_output.exit_code);
-                        }
-                    }
-                } else {
-                    errorCount++;
-                    addPacsLogEntry('error', `C-FIND ${i + 1}/${selectedPacsIds.length}: Query failed on ${pacsName} - ${data.error}`);
-                }
-            } catch (error) {
-                errorCount++;
-                addPacsLogEntry('error', `C-FIND ${i + 1}/${selectedPacsIds.length}: Network error for ${pacsName} - ${error.message}`);
-            }
-        }
-        
-        // Summary
-        addPacsLogEntry('info', `C-FIND operations completed: ${foundCount} found, ${notFoundCount} not found, ${errorCount} errors`);
-        
-        // Show status note under query button
-        if (foundCount > 0) {
-            showQueryStatusNote(true, foundPacs.join(', '));
-            showAlert('info', 
-                `✅ Study found on ${foundCount} PACS server(s): ${foundPacs.join(', ')}\n\n` +
-                `${notFoundCount > 0 ? `Not found on: ${notFoundPacs.join(', ')}\n\n` : ''}` +
-                `${errorCount > 0 ? `Errors on: ${errorCount} PACS server(s)\n\n` : ''}` +
-                `Check the DICOM Command Log for detailed results.`
-            );
-        } else if (notFoundCount > 0) {
-            showQueryStatusNote(false, notFoundPacs.join(', '));
-            showAlert('warning', 
-                `⚠️ Study not found on any PACS server.\n\n` +
-                `Queried: ${notFoundPacs.join(', ')}\n\n` +
-                `${errorCount > 0 ? `Errors on: ${errorCount} PACS server(s)\n\n` : ''}` +
-                `Check the DICOM Command Log for details.`
-            );
-        } else {
-            document.getElementById('queryStatusNote').style.display = 'none';
-            showAlert('danger', `❌ All C-FIND operations failed (${errorCount} errors). Check the DICOM Command Log for details.`);
-        }
-        
-    } catch (error) {
-        document.getElementById('queryStatusNote').style.display = 'none';
-        addPacsLogEntry('error', `C-FIND operation error: ${error.message}`);
-        showAlert('danger', `❌ Error: ${error.message}`);
-    } finally {
-        queryBtn.innerHTML = originalContent;
-        queryBtn.disabled = false;
-    }
-}
+
+
 
 function getPacsConfig(pacsName) {
     const configs = {
@@ -1597,25 +1478,7 @@ function getPacsConfig(pacsName) {
     return configs[pacsName] || configs['TESTPACS'];
 }
 
-function showQueryStatusNote(found, pacsName) {
-    const statusNote = document.getElementById('queryStatusNote');
-    
-    if (found) {
-        statusNote.innerHTML = `
-            <div class="alert alert-success alert-sm py-2 mb-0" role="alert">
-                <i class="fas fa-check-circle"></i> Study UID found on <strong>${pacsName}</strong>
-            </div>
-        `;
-    } else {
-        statusNote.innerHTML = `
-            <div class="alert alert-warning alert-sm py-2 mb-0" role="alert">
-                <i class="fas fa-exclamation-triangle"></i> Study UID not found on <strong>${pacsName}</strong>
-            </div>
-        `;
-    }
-    
-    statusNote.style.display = 'block';
-}
+
 
 function viewSeries(seriesUID) {
     // Placeholder for series viewing functionality
@@ -1747,7 +1610,7 @@ function displayStudyDetailsWithFiles(study, allFiles) {
             <div class="col-12">
                 <button class="btn btn-success btn-sm me-2" onclick="showPacsDialog('${study.study_uid}')"
                         title="Send entire study to PACS server" data-bs-toggle="tooltip">
-                    <i class="fas fa-paper-plane"></i> Send or Query For Study on PACS
+                    <i class="fas fa-paper-plane"></i> Send Study to PACS
                 </button>
                 <button class="btn btn-info btn-sm me-2" onclick="clearStudyDetails()"
                         title="Clear study details" data-bs-toggle="tooltip">
@@ -3239,15 +3102,7 @@ function generateStudy(requestData) {
             </div>
             <p class="text-muted small">Send the entire study (all series) to the selected PACS server(s).</p>
             
-            <div class="d-grid mt-3">
-              <button type="button" class="btn btn-info" id="queryPacsBtn" onclick="queryPACS()" disabled>
-                <i class="fas fa-search"></i> Query Study on PACS
-              </button>
-            </div>
-            <div id="queryStatusNote" class="mt-2" style="display: none;">
-              <!-- Status note will be inserted here -->
-            </div>
-            <p class="text-muted small">Check if this study already exists on the selected PACS server.</p>
+
           </div>
           <div class="col-md-6">
             <div class="card h-100">
@@ -3263,7 +3118,7 @@ function generateStudy(requestData) {
                   <div class="text-center py-4">
                     <i class="fas fa-terminal fa-2x mb-2 opacity-50"></i>
                     <div>DICOM command output will appear here</div>
-                    <small class="text-muted">Send or query to see command logs</small>
+                    <small class="text-muted">Send to see command logs</small>
                   </div>
                 </div>
               </div>

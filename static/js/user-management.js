@@ -2,18 +2,13 @@
 let users = [];
 let currentUserId = null;
 
-// Role permission mappings
-const rolePermissions = {
-    'admin': ['system_admin'],
-    'operator': ['dicom_generate', 'dicom_view', 'dicom_export', 'pacs_query_test', 'pacs_move_test', 'pacs_configure_test', 'pacs_test_test', 'pacs_query_prod', 'pacs_move_prod', 'pacs_configure_prod', 'pacs_test_prod', 'patients_view', 'patients_create', 'patients_edit'],
-    'viewer': ['dicom_view', 'pacs_query_test', 'pacs_query_prod', 'patients_view'],
-    'pacs_admin': ['pacs_query_test', 'pacs_move_test', 'pacs_configure_test', 'pacs_test_test', 'pacs_query_prod', 'pacs_move_prod', 'pacs_configure_prod', 'pacs_test_prod', 'system_config'],
-    'patient_manager': ['patients_view', 'patients_create', 'patients_edit', 'patients_delete', 'dicom_view'],
-    'test_user': ['dicom_view', 'pacs_query_test', 'pacs_move_test', 'patients_view'],
-    'test_viewer': ['dicom_view', 'pacs_query_test', 'patients_view'],
-    'prod_user': ['dicom_view', 'pacs_query_prod', 'pacs_move_prod', 'patients_view'],
-    'prod_viewer': ['dicom_view', 'pacs_query_prod', 'patients_view'],
-    'user': []
+// Role descriptions
+const roleDescriptions = {
+    'admin': 'Full system access - can do anything including user management, PACS configuration, and all DICOM operations in both test and production environments.',
+    'test_write': 'Test environment write access - can query, C-STORE and C-MOVE to test PACS, generate DICOM, and manage users.',
+    'test_read': 'Test environment read access - can view status and query test PACS, generate DICOM, and manage users.',
+    'prod_write': 'Production environment write access - can query, C-STORE and C-MOVE to production PACS, generate DICOM, and manage users.',
+    'prod_read': 'Production environment read access - can view status and query production PACS, generate DICOM, and manage users.'
 };
 
 // Load users on page load
@@ -22,6 +17,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listeners
     document.getElementById('userSearch').addEventListener('input', searchUsers);
+    
+    // Add role change listener
+    const roleSelect = document.getElementById('role');
+    if (roleSelect) {
+        roleSelect.addEventListener('change', updateRoleDescription);
+    }
 });
 
 function loadUsers() {
@@ -77,17 +78,28 @@ function updateStatistics() {
 function getRoleBadgeColor(role) {
     const colors = {
         'admin': 'danger',
-        'operator': 'primary',
-        'viewer': 'info',
-        'pacs_admin': 'warning',
-        'patient_manager': 'success',
-        'test_user': 'secondary',
-        'test_viewer': 'light',
-        'prod_user': 'dark',
-        'prod_viewer': 'secondary',
-        'user': 'outline-secondary'
+        'test_write': 'success',
+        'test_read': 'info',
+        'prod_write': 'warning',
+        'prod_read': 'primary'
     };
     return colors[role] || 'secondary';
+}
+
+function updateRoleDescription() {
+    const roleSelect = document.getElementById('role');
+    const descriptionDiv = document.getElementById('roleDescription');
+    
+    if (roleSelect && descriptionDiv) {
+        const selectedRole = roleSelect.value;
+        if (selectedRole && roleDescriptions[selectedRole]) {
+            descriptionDiv.textContent = roleDescriptions[selectedRole];
+            descriptionDiv.className = 'alert alert-info';
+        } else {
+            descriptionDiv.textContent = 'Select a role to see its capabilities.';
+            descriptionDiv.className = 'alert alert-info';
+        }
+    }
 }
 
 function searchUsers() {
@@ -107,7 +119,13 @@ function openCreateUserModal() {
     document.getElementById('userId').value = '';
     document.getElementById('password').required = true;
     document.getElementById('confirmPassword').required = true;
-    clearAllPermissions();
+    
+    // Reset role description
+    const descriptionDiv = document.getElementById('roleDescription');
+    if (descriptionDiv) {
+        descriptionDiv.textContent = 'Select a role to see its capabilities.';
+        descriptionDiv.className = 'alert alert-info';
+    }
     
     const modal = new bootstrap.Modal(document.getElementById('userModal'));
     modal.show();
@@ -130,44 +148,16 @@ function editUser(username) {
     document.getElementById('password').value = '';
     document.getElementById('confirmPassword').value = '';
     
-    clearAllPermissions();
-    setPermissions(user.permissions);
+    // Update role description
+    updateRoleDescription();
     
     const modal = new bootstrap.Modal(document.getElementById('userModal'));
     modal.show();
 }
 
-function updatePermissionsByRole() {
-    const role = document.getElementById('role').value;
-    clearAllPermissions();
-    
-    if (role && rolePermissions[role]) {
-        setPermissions(rolePermissions[role]);
-    }
-}
 
-function clearAllPermissions() {
-    document.querySelectorAll('input[name="permissions"]').forEach(checkbox => {
-        checkbox.checked = false;
-    });
-}
 
-function setPermissions(permissions) {
-    permissions.forEach(permission => {
-        const checkbox = document.getElementById(permission);
-        if (checkbox) {
-            checkbox.checked = true;
-        }
-    });
-}
 
-function getSelectedPermissions() {
-    const permissions = [];
-    document.querySelectorAll('input[name="permissions"]:checked').forEach(checkbox => {
-        permissions.push(checkbox.value);
-    });
-    return permissions;
-}
 
 function saveUser() {
     const formData = new FormData(document.getElementById('userForm'));
@@ -176,8 +166,7 @@ function saveUser() {
         email: formData.get('email'),
         password: formData.get('password'),
         confirmPassword: formData.get('confirmPassword'),
-        role: formData.get('role'),
-        permissions: getSelectedPermissions()
+        role: formData.get('role')
     };
     
     // Validation
