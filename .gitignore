@@ -47,7 +47,7 @@ ehthumbs.db
 Thumbs.db
 
 # Application specific
-data/dicom_output/
+dicom_output/
 data/patient_registry.json
 data/pacs_config.json
 logs/
@@ -85,9 +85,13 @@ secrets.yaml
 config/users.json
 config/auth_config.json
 cookies.txt
-*.cookiestest-pacs/docker/orthanc-data*/
+*.cookies
+
+# Test PACS data directories
+test-pacs/docker/orthanc-data*/
 test-pacs/docker/orthanc-data-2*/
-*.py
-*.txt
-cookies.txt
+
+# Temporary test files
+create_test_dicom.py
+test_cmove.py
 testuser_cookies.txt
