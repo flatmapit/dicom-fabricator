@@ -1115,9 +1115,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Outbound AEs container dimensions (only around the C-MOVE AE boxes)
             const outboundAEX = rightStartX - 20; // Start slightly before the first AE box
             const outboundAEWidth = 160; // Width to encompass AE box (120) + padding (20+20)
-            const outboundAEY = centerY - 90; // Start above the first route (routes start at centerY - 80)
-            // Calculate height based on actual content: title (40px) + routes (moveRoutes.length * 80px) + bottom padding (20px)
-            const outboundAEHeight = 40 + (moveRoutes.length * 80) + 20;
+            const outboundAEY = centerY - 120; // Start above the first route
+            const outboundAEHeight = (moveRoutes.length > 0 ? moveRoutes.length * 80 : 0) + 160; // Dynamic height + padding for title
 
             // Create SVG
             const svg = `
