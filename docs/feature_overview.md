@@ -77,6 +77,8 @@ Manage PACS server connections and perform DICOM operations.
 
 ![PACS Management](images/pacs-management.png)
 
+![Pacs Config](images/pacs_config_cmoveae.png)
+
 **Common Activities:**
 - **Server Configuration**: Add and configure PACS server connections
 - **Connectivity Testing**: Verify PACS server accessibility

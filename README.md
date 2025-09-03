@@ -6,6 +6,8 @@ Note: This tool works in test, but exercise caution with live/prod PACS and test
 
 ![Dashboard Screenshot](docs/images/dashboard.png)
 
+![PACS Context](docs/images/pacs-context-diag.png)
+
 
 *For a detailed visual overview of features and common activities, see [Feature Overview](docs/feature_overview.md)*
 
