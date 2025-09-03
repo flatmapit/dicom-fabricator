@@ -148,4 +148,4 @@ This configuration is for **development/testing only**. For production:
 - Change default credentials
 - Enable proper authentication
 - Configure TLS/SSL
-- Restrict network access
+- Restrict network accessstructure the 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DICOM Fabricator is a Flask web application for generating synthetic DICOM studies for testing clinical radiology integrations without PHI/PII. It creates fake medical imaging data with embedded metadata for testing PACS servers, DICOM viewers, and clinical system integrations. The web interface uses tosijs for advanced table management and includes comprehensive PACS configuration management with multi-criteria querying capabilities.
+DICOM Fabricator is a Flask web application for generating synthetic DICOM studies for testing clinical radiology integrations without PHI/PII. It creates fake medical imaging data with embedded metadata for testing PACS servers, DICOM viewers, and clinical system integrations. The web interface includes comprehensive PACS configuration management with multi-criteria querying capabilities and role-based access control.
 
 Copyright (c) 2025 Christopher Gentle <chris@flatmapit.com>
 
@@ -24,22 +24,24 @@ python3 app.py                                           # Runs on http://localh
 ```
 
 **Web Interface Features:**
-- **Patient Management**: Live searchable interface, click-to-edit patients, bulk delete with checkboxes (no individual delete buttons)
+- **Authentication & Authorization**: Role-based access control with admin, test_write, test_read, prod_write, prod_read roles
+- **Patient Management**: Live searchable interface, click-to-edit patients, bulk delete with checkboxes
 - **Multi-Series DICOM Generator**: Modal-based generation interface with up to 9 series, each with 1-10 images
 - **HL7 ORM Integration**: Complete ORM message parser with tabbed generation interface (Manual + ORM tabs)
 - **Study Date Support**: Extract study dates from OBR-7 field and use in DICOM generation
 - **Study Management**: Bulk delete operations with checkboxes, modal-based study details viewer
-- **Modal-Based UI**: Generation parameters and study details in pop-over modals instead of fixed panels
-- **DICOM Headers Export**: Comprehensive DICOM tag display with standard names and copyable text format (replaces separate viewer page)
-- **Comprehensive PACS Management**: Full CRUD operations for PACS configurations
+- **Modal-Based UI**: Generation parameters and study details in pop-over modals
+- **DICOM Headers Export**: Comprehensive DICOM tag display with standard names and copyable text format
+- **Comprehensive PACS Management**: Full CRUD operations for PACS configurations (admin only)
 - **Advanced PACS Querying**: Multi-criteria search (name, ID, accession, UIDs, date ranges)
-- **DICOM Command Logging**: Real-time logging of C-STORE/C-FIND operations with command details
+- **C-MOVE Support**: Transfer studies between PACS servers with proper routing configuration
+- **DICOM Command Logging**: Real-time logging of C-STORE/C-FIND/C-MOVE operations with command details
+- **Environment-Based Access**: Separate permissions for test and production PACS environments
 - **PACS Query Status Notes**: Visual indicators showing whether studies exist on selected PACS
-- **Async Progress Monitoring**: Real-time transfer progress with sidebar notifications
-- **Automatic PACS Testing**: Auto-test all PACS configurations on page load
+- **Automatic PACS Testing**: Auto-test all PACS configurations based on user activity
 - **Australian Localization**: Patient addresses and phone numbers in Australian format
-- **Custom Table Sorting**: Clickable headers with visual sort indicators (replaced tosijs dependency)
-- **Improved Layout**: Fixed floating footer that was obscuring table content
+- **Custom Table Sorting**: Clickable headers with visual sort indicators
+- **Footer Statistics**: Real-time PACS status display with connection health indicators
 
 ### Command Line Tools (Legacy)
 
@@ -77,34 +79,53 @@ storescu -aet DICOMFAB -aec TESTPACS localhost 4242 dicom_output/*.dcm
 #### Web Application
 - **app.py** - Flask application with API endpoints and web routes
 - **templates/** - HTML templates with modal-based interface
-  - `base.html` - Base template with navigation (no viewer page link)
-  - `index.html` - Dashboard with stats and PACS status
+  - `base.html` - Base template with navigation and footer
+  - `index.html` - Dashboard redirect to query_pacs.html
+  - `login.html` - Authentication login page
   - `patients.html` - Patient management with live search and bulk operations
   - `generator.html` - Modal-based DICOM generation and study management interface
   - `pacs.html` - Comprehensive PACS management and querying interface
+  - `query_pacs.html` - Main PACS query interface (home page)
+  - `users.html` - User management interface (admin only)
+  - `viewer.html` - Legacy DICOM viewer page (deprecated)
 - **static/** - Frontend assets
   - `css/style.css` - Custom styling
   - `js/app.js` - JavaScript utilities and API wrapper
+  - `js/user-management.js` - User management functionality
 
 #### Core Modules
 - **src/** - Backend Python modules
+  - `auth.py` - Authentication and authorization with role-based access control
   - `dicom_fabricator.py` - Main DICOM generation logic, creates synthetic DICOM files with embedded text/shapes
+  - `enterprise_auth.py` - Enterprise authentication integration (AD/SAML)
+  - `group_mapper.py` - AD group to role mapping functionality
   - `patient_config.py` - Patient data models and registry management
   - `pacs_config.py` - PACS configuration management with CRUD operations and testing
   - `patient_manager.py` - CLI for managing patient database
   - `view_dicom.py` - DICOM viewer utility for reviewing generated files
 
 #### Configuration & Data
-- **docker/** - PACS server configuration
-  - `docker-compose.yml` - Orthanc PACS server setup
-  - `orthanc-config.json` - PACS server settings
+- **test-pacs/docker/** - Test PACS server configurations
+  - `docker-compose.yml` - Multi-PACS Orthanc setup
+  - `orthanc-config.json` - TESTPACS1 configuration
+  - `orthanc-config-2.json` - TESTPACS2 configuration
+  - `orthanc-prod-config.json` - PRODPACS1 configuration
+  - `orthanc-prod-config-2.json` - PRODPACS2 configuration
 - **config/** - Configuration files
   - `patient_config.json` - Patient configuration patterns and defaults
   - `requirements.txt` - Python dependencies
+  - `auth_config.json` - Authentication settings (created at runtime)
+  - `users.json` - User database (created at runtime)
+  - `group_mappings.json` - AD group mappings (optional)
 - **data/** - Runtime data
   - `patient_registry.json` - Persistent patient database
   - `pacs_config.json` - PACS configurations with connection test results
 - **dicom_output/** - Generated DICOM files (created at runtime)
+- **docs/** - Documentation
+  - `AUTHENTICATION_SETUP.md` - Auth configuration guide
+  - `PERMISSIONS_TO_FEATURES.md` - Feature-role mapping matrix
+  - `C-MOVE_TROUBLESHOOTING.md` - PACS operation debugging
+  - `feature_overview.md` - Visual feature guide
 
 ### Key Components
 
@@ -152,10 +173,21 @@ storescu -aet DICOMFAB -aec TESTPACS localhost 4242 dicom_output/*.dcm
 ### API Endpoints
 
 #### Web Pages
-- `GET /` - Home dashboard
+- `GET /` - Home dashboard (redirects to query_pacs.html)
+- `GET /login` - Authentication login page
+- `GET /logout` - Logout and session cleanup
 - `GET /patients` - Patient management page with live search and edit capabilities
 - `GET /generator` - DICOM generation page with modal-based interface
-- `GET /pacs` - PACS management and querying page
+- `GET /pacs` - PACS management and querying interface
+- `GET /query-pacs` - Main PACS query interface
+- `GET /users` - User management interface (admin only)
+
+#### Authentication & User Management
+- `POST /login` - Authenticate user with username/password
+- `GET /api/users` - List all users (admin only)
+- `POST /api/users` - Create new user (admin only)
+- `PUT /api/users/<username>` - Update user (admin only)
+- `DELETE /api/users/<username>` - Delete user (admin only)
 
 #### Patient Management
 - `GET /api/patients` - List all patients
@@ -196,17 +228,14 @@ storescu -aet DICOMFAB -aec TESTPACS localhost 4242 dicom_output/*.dcm
 
 ### PACS Integration
 
-**Orthanc PACS Servers**
-- **Primary PACS**: Runs on ports 4242 (DICOM) and 8042 (HTTP)
-  - Web UI credentials: test/test123
-  - AE Title: TESTPACS
-  - Data persisted in docker/orthanc-data/
-- **Test PACS 2**: Runs on ports 4243 (DICOM) and 8043 (HTTP)
-  - Web UI credentials: test2/test456
-  - AE Title: TESTPACS2
-  - Data persisted in docker/orthanc-data-2/
-- Both support C-STORE, C-FIND, C-MOVE operations
-- Started with `docker compose up` in docker directory
+**Test PACS Servers (Docker)**
+- **TESTPACS1**: Port 4242 (DICOM), 8042 (HTTP), credentials: test/test123
+- **TESTPACS2**: Port 4243 (DICOM), 8043 (HTTP), credentials: test2/test456
+- **PRODPACS1**: Port 4245 (DICOM), 8045 (HTTP), credentials: prod1/prod123
+- **PRODPACS2**: Port 4246 (DICOM), 8046 (HTTP), credentials: prod2/prod456
+- All support C-STORE, C-FIND, C-MOVE operations
+- Simplified DicomModalities configuration for inter-PACS communication
+- Started with `docker compose up` in test-pacs/docker directory
 
 **PACS Configuration Management**
 - Dynamic PACS configurations stored in data/pacs_config.json
@@ -235,6 +264,24 @@ storescu -aet DICOMFAB -aec TESTPACS localhost 4242 dicom_output/*.dcm
 - Clear log functionality for session management
 - Enhanced debugging and operation transparency
 
+## Authentication & Authorization
+
+**Role-Based Access Control:**
+- **admin**: Full system access, user management, PACS configuration
+- **test_write**: Test PACS write access (C-STORE, C-MOVE, C-FIND)
+- **test_read**: Test PACS read-only access (C-FIND only)
+- **prod_write**: Production PACS write access (C-STORE, C-MOVE, C-FIND)
+- **prod_read**: Production PACS read-only access (C-FIND only)
+
+**Default Credentials:**
+- Username: `admin`
+- Password: `admin123`
+- Change immediately after first login!
+
+**Permission Documentation:**
+- See `docs/PERMISSIONS_TO_FEATURES.md` for complete feature-to-role mapping
+- See `docs/AUTHENTICATION_SETUP.md` for configuration guide
+
 ## Important Notes
 
 - Flask app runs on port 5001 by default (change in app.py if needed)
@@ -244,17 +291,23 @@ storescu -aet DICOMFAB -aec TESTPACS localhost 4242 dicom_output/*.dcm
 - Default output directory is ./dicom_output/
 - Patient registry persisted in data/patient_registry.json
 - PACS configurations persisted in data/pacs_config.json
-- DCMTK tools (storescu, echoscu, findscu) required for PACS operations
-- tosijs loaded from CDN for table management features
+- User database persisted in config/users.json
+- DCMTK tools (storescu, echoscu, findscu, movescu) required for PACS operations
 - Bootstrap 5.1.3 and Font Awesome 6.0 for UI components
-- Automatic PACS testing runs on page load (can take 10-20 seconds)
-- Progress monitoring uses async sidebar notifications
+- Automatic PACS testing runs based on user activity (active: every 30s, inactive: every 5 min)
 - All tooltips added for accessibility and user guidance
 - Push after any change of more than 10 lines
 
 ## Recent Major Features Added
 
-### HL7 ORM Integration & Multi-Series Generation (Latest)
+### Authentication & Authorization System (2025-01)
+- **Role-Based Access Control**: Five roles with environment-specific permissions
+- **User Management**: Admin-only user creation, editing, and deletion
+- **Environment Isolation**: Separate permissions for test and production PACS
+- **Session Management**: Secure login/logout with session persistence
+- **Permission Documentation**: Comprehensive feature-to-role mapping matrix
+
+### HL7 ORM Integration & Multi-Series Generation
 - **HL7 ORM Message Parser**: Complete parser for MSH, PID, ORC, and OBR segments
 - **Tabbed Generation Interface**: Two-tab modal with "Enter Study Data" and "Create study for ORM"
 - **Study Date Extraction**: Automatic extraction from OBR-7 (Observation Date/Time) field
@@ -310,12 +363,23 @@ storescu -aet DICOMFAB -aec TESTPACS localhost 4242 dicom_output/*.dcm
 - **Dynamic Configuration**: All PACS operations use configurable endpoints
 - **Professional UI**: Enhanced tooltips, proper navigation, optimized table layouts
 
-### Recent Improvements (2025)
-- **PACS Query Status Notes**: Visual indicators under query buttons showing study existence status
+### Recent Improvements (2025-01)
+- **Authentication System**: Complete role-based access control implementation
+- **PACS Configuration Simplification**: Streamlined DicomModalities to use direct AE titles
+- **C-MOVE Troubleshooting**: Comprehensive documentation for C-FIND and C-MOVE issues
+- **Footer Statistics**: Real-time PACS health monitoring with down server indicators
+- **Permission Documentation**: Complete feature-to-role mapping matrix
 - **Custom Table Sorting**: Replaced tosijs with custom JavaScript sorting implementation
 - **License Modal**: MIT License popup accessible from footer
-- **Third-Party License Documentation**: Comprehensive THIRD-PARTY-LICENSES.md file
 - **Test Data Cleanup**: Removed all test DICOM files and Orthanc data from repository
+
+## Troubleshooting
+
+- **C-FIND Errors**: Use `-S` flag for STUDY queries, `-P` for PATIENT queries
+- **C-MOVE Failures**: Check DicomModalities configuration uses container names not localhost
+- **Authentication Issues**: Default admin/admin123, change immediately after first login
+- **Permission Denied**: Check user role has required environment access (test/prod, read/write)
+- See `docs/C-MOVE_TROUBLESHOOTING.md` for detailed PACS operation debugging
 
 ## Licensing & Legal
 - **License**: MIT License (see LICENSE file)
