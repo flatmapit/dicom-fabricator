@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <label for="configEnvironment" class="form-label">Environment</label>
                             <select class="form-select" id="configEnvironment" name="environment">
                                 <option value="test">Test</option>
-                                <option value="production">Production</option>
+                                <option value="prod">Production</option>
                                 <option value="both">Both</option>
                             </select>
                             <div class="form-text">Environment classification for this PACS</div>
@@ -541,7 +541,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     'Never';
                                 
                                 // Apply environment color coding
-                                const envColor = config.environment === 'production' ? '#6f42c1' : 
+                                const envColor = config.environment === 'prod' ? '#6f42c1' : 
                                                config.environment === 'test' ? '#198754' : '#6c757d';
                                 const envBadge = config.environment ? 
                                     `<span class="badge" style="background-color: ${envColor}; color: white; font-size: 0.7rem; margin-left: 5px;">${config.environment}</span>` : '';
