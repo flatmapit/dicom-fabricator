@@ -8,9 +8,8 @@ Note: This tool works in test, but exercise caution with live/prod PACS and test
 
 <div align="center">
 
-[![DICOM Fabricator Demo - Click to Watch](https://img.youtube.com/vi/8QwM6aQ1h6A/0.jpg)](https://flatmapit-com-videos.s3.amazonaws.com/20250903DicomFab.mov)
 
-**[▶️ Watch Demo Video (5 minutes)](https://flatmapit-com-videos.s3.amazonaws.com/20250903DicomFab.mov)**
+**[▶️ Watch Demo Video (2 minutes)](https://flatmapit-com-videos.s3.amazonaws.com/20250903DicomFab.mov)**
 
 *Complete walkthrough of DICOM Fabricator features and workflows*
 
